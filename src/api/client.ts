@@ -30,15 +30,37 @@ apiClient.interceptors.response.use(
   },
 )
 
-export function getApiErrorMessage(error: unknown) {
-  if (axios.isAxiosError<{ message?: string; error?: string }>(error)) {
-    return error.response?.data?.message
-      ?? error.response?.data?.error
-      ?? (error.code === 'ERR_NETWORK'
-        ? 'No fue posible conectar con el servidor.'
-        : 'No fue posible completar la solicitud.')
+function readErrorText(value: unknown, depth = 0): string | undefined {
+  if (typeof value === 'string') {
+    const text = value.trim()
+    return text || undefined
   }
-  return 'Ocurrió un error inesperado.'
+  if (!value || typeof value !== 'object' || depth >= 2) return undefined
+
+  const payload = value as Record<string, unknown>
+  return readErrorText(payload.message, depth + 1)
+    ?? readErrorText(payload.error, depth + 1)
+}
+
+function readErrorCode(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const payload = value as Record<string, unknown>
+  if (typeof payload.code === 'string') return payload.code
+  return readErrorCode(payload.error)
+}
+
+export function getApiErrorMessage(error: unknown): string {
+  if (!axios.isAxiosError(error)) return 'Ocurrió un error inesperado.'
+
+  const responseData: unknown = error.response?.data
+  const responseCode = readErrorCode(responseData)
+
+  if (error.code === 'ERR_NETWORK'
+      || (error.response?.status === 404 && responseCode === 'NOT_FOUND')) {
+    return 'No fue posible conectar con el servidor.'
+  }
+
+  return readErrorText(responseData) ?? 'No fue posible completar la solicitud.'
 }
 
 export function getApiValidationErrors(error: unknown) {
