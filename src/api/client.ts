@@ -2,6 +2,14 @@ import axios from 'axios'
 
 const TOKEN_KEY = 'life_master_token'
 
+const apiPrefix = `/${(import.meta.env.VITE_API_PREFIX ?? '/api/v1')
+  .trim()
+  .replace(/^\/+|\/+$/g, '')}`
+const apiOrigin = import.meta.env.PROD
+  ? (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '')
+  : ''
+const apiBaseUrl = `${apiOrigin}${apiPrefix}`
+
 export const tokenStorage = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
@@ -9,7 +17,7 @@ export const tokenStorage = {
 }
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
 })
 
