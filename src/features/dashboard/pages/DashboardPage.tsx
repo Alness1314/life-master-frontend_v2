@@ -44,13 +44,11 @@ const chartColors = ['#7567e8', '#43a047', '#ef8f35', '#42a5f5', '#ec407a', '#ab
 const chartCardSx = {
   border: '1px solid',
   borderColor: 'divider',
-  height: { lg: 410, xl: 430 },
-  overflow: { xs: 'visible', lg: 'hidden' },
+  minHeight: { lg: 410, xl: 430 },
+  overflow: 'visible',
 }
 
 const chartCardContentSx = {
-  height: { xs: 'auto', lg: '100%' },
-  overflow: { xs: 'visible', lg: 'hidden' },
   p: { xs: 2, sm: 2.5 },
   '&:last-child': { pb: { xs: 2.5, sm: 2.5 } },
 }
@@ -270,7 +268,7 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto md:overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <BreadcrumbNav current="Dashboard" />
       <div className="flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 max-w-full">
@@ -320,7 +318,8 @@ export function DashboardPage() {
         <Alert severity="error">No fue posible cargar el resumen financiero.</Alert>
       )}
       {summaryQuery.data && (
-        <div className="grid content-start grid-rows-[auto_auto_auto] gap-4 pb-4 md:min-h-0 md:flex-1 md:overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid content-start gap-4 pb-4">
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             {summaryCards.map((card) => (
               <Card key={card.label} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
@@ -408,6 +407,7 @@ export function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
+          </div>
         </div>
       )}
     </div>
