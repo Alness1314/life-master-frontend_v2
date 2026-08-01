@@ -595,7 +595,7 @@ export const moduleConfig: CrudModuleConfig = {
   endpointById: (_, id) => API_ROUTES.modules.byId(id),
   primaryField: 'name',
   icon: 'widgets',
-  permissionsPath: '/app-modules/permissions',
+  permissionsPath: (moduleId) => `/app-modules/${moduleId}/permissions`,
   dynamicOptions: {
     fieldName: 'profile',
     endpoint: API_ROUTES.profiles.root,

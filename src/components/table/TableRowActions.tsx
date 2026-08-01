@@ -1,10 +1,11 @@
-import { IconButton, Stack, Tooltip } from '@mui/material'
+import { Box, IconButton, Stack, Tooltip } from '@mui/material'
 import { MaterialSymbol } from '../icons/MaterialSymbol'
 
 interface TableRowActionsProps {
   onView?: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onConfigurePermissions?: () => void
 }
 
 const actionButtonStyles = {
@@ -16,11 +17,34 @@ const actionButtonStyles = {
   '&:hover': { bgcolor: '#d8d5fa' },
 }
 
-export function TableRowActions({ onView, onEdit, onDelete }: TableRowActionsProps) {
+function PermissionSettingsIcon() {
+  return (
+    <Box sx={{ height: 22, position: 'relative', width: 24 }}>
+      <MaterialSymbol name="shield" size={21} />
+      <MaterialSymbol
+        name="settings"
+        size={12}
+        style={{ bottom: -1, position: 'absolute', right: -1 }}
+      />
+    </Box>
+  )
+}
+
+export function TableRowActions({
+  onView,
+  onEdit,
+  onDelete,
+  onConfigurePermissions,
+}: TableRowActionsProps) {
   const actions = [
-    { label: 'Ver detalle', icon: 'visibility', handler: onView },
-    { label: 'Editar', icon: 'edit', handler: onEdit },
-    { label: 'Eliminar', icon: 'delete', handler: onDelete },
+    { label: 'Ver detalle', icon: <MaterialSymbol name="visibility" size={20} />, handler: onView },
+    { label: 'Editar', icon: <MaterialSymbol name="edit" size={20} />, handler: onEdit },
+    {
+      label: 'Configurar permisos',
+      icon: <PermissionSettingsIcon />,
+      handler: onConfigurePermissions,
+    },
+    { label: 'Eliminar', icon: <MaterialSymbol name="delete" size={20} />, handler: onDelete },
   ].filter((action) => Boolean(action.handler))
 
   return (
@@ -33,7 +57,7 @@ export function TableRowActions({ onView, onEdit, onDelete }: TableRowActionsPro
             size="small"
             sx={actionButtonStyles}
           >
-            <MaterialSymbol name={action.icon} size={20} />
+            {action.icon}
           </IconButton>
         </Tooltip>
       ))}

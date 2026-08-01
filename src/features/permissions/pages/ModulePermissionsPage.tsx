@@ -2,27 +2,24 @@ import { useMemo, useState } from 'react'
 import {
   Alert,
   Button,
+  Checkbox,
   CircularProgress,
+  Divider,
   FormControlLabel,
-  MenuItem,
   Paper,
-  Switch,
-  TextField,
   Typography,
 } from '@mui/material'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import { getApiErrorMessage } from '../../../api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams } from 'react-router-dom'
+import { apiClient, getApiErrorMessage } from '../../../api/client'
 import { useFeedback } from '../../../components/feedback/useFeedback'
 import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { ModulePageLayout } from '../../../components/layout/ModulePageLayout'
-import { DynamicDataTable } from '../../../components/table/DynamicDataTable'
-import type { DataTableColumn } from '../../../components/table/DynamicDataTable'
+import { API_ROUTES } from '../../../config/apiRoutes'
 import { useModulePermission } from '../../modules/api'
-import { useProfiles } from '../../profiles/api'
 import {
   updatePermission,
-  useProfilePermissions,
+  useModulePermissions,
 } from '../api'
 import type { ModulePermission, PermissionUpdateRequest } from '../api'
 
@@ -34,6 +31,13 @@ const permissionOptions: Array<{ flag: PermissionFlag; label: string }> = [
   { flag: 'canUpdate', label: 'Actualizar' },
   { flag: 'canDelete', label: 'Eliminar' },
 ]
+
+interface ModuleSummary {
+  id: string
+  name: string
+  route: string
+  permissionKey: string | null
+}
 
 function toPermissionRequest(permission: ModulePermission): PermissionUpdateRequest {
   return {
@@ -47,22 +51,25 @@ function toPermissionRequest(permission: ModulePermission): PermissionUpdateRequ
 export function ModulePermissionsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { moduleId } = useParams()
   const { showSuccess } = useFeedback()
   const access = useModulePermission('app-modules')
-  const profilesQuery = useProfiles()
-  const profiles = (profilesQuery.data ?? [])
-    .filter((profile) => profile.name.toLowerCase() !== 'administrator')
-  const [profileId, setProfileId] = useState('')
-  const selectedProfileId = profileId || profiles[0]?.id || ''
-  const permissionsQuery = useProfilePermissions(selectedProfileId)
+  const moduleQuery = useQuery({
+    queryKey: ['app-modules', moduleId],
+    queryFn: async () => (
+      await apiClient.get<ModuleSummary>(API_ROUTES.modules.byId(moduleId!))
+    ).data,
+    enabled: Boolean(moduleId && access.canRead),
+  })
+  const permissionsQuery = useModulePermissions(access.canRead ? moduleId : undefined)
+  const permissions = (permissionsQuery.data ?? [])
+    .filter((permission) => permission.profileName.toLowerCase() !== 'administrator')
   const [draft, setDraft] = useState<Record<string, ModulePermission>>({})
 
-  const changedPermissions = useMemo(() => {
-    return Object.values(draft).filter((permission) => {
-      const previous = permissionsQuery.data?.find((item) => item.moduleId === permission.moduleId)
-      return previous && permissionOptions.some(({ flag }) => previous[flag] !== permission[flag])
-    })
-  }, [draft, permissionsQuery.data])
+  const changedPermissions = useMemo(() => Object.values(draft).filter((permission) => {
+    const previous = permissions.find((item) => item.profileId === permission.profileId)
+    return previous && permissionOptions.some(({ flag }) => previous[flag] !== permission[flag])
+  }), [draft, permissions])
 
   const saveMutation = useMutation({
     mutationFn: () => Promise.all(changedPermissions.map((permission) => (
@@ -70,7 +77,7 @@ export function ModulePermissionsPage() {
     ))),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['permissions', selectedProfileId] }),
+        queryClient.invalidateQueries({ queryKey: ['permissions', 'module', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['current-user-modules'] }),
       ])
       setDraft({})
@@ -78,53 +85,19 @@ export function ModulePermissionsPage() {
     },
   })
 
-  const togglePermission = (moduleId: string, flag: PermissionFlag) => {
-    const currentPermission = draft[moduleId]
-      ?? permissionsQuery.data?.find((permission) => permission.moduleId === moduleId)
-    if (!currentPermission) return
+  const togglePermission = (permission: ModulePermission, flag: PermissionFlag) => {
+    const currentPermission = draft[permission.profileId] ?? permission
     setDraft((current) => ({
       ...current,
-      [moduleId]: { ...currentPermission, [flag]: !currentPermission[flag] },
+      [permission.profileId]: {
+        ...currentPermission,
+        [flag]: !currentPermission[flag],
+      },
     }))
   }
 
-  const columns: DataTableColumn<ModulePermission>[] = [
-    {
-      id: 'module',
-      header: 'Módulo',
-      minWidth: 220,
-      render: (permission) => (
-        <div>
-          <Typography sx={{ fontWeight: 700 }}>{permission.moduleName}</Typography>
-          <Typography color="text.secondary" variant="caption">
-            {permission.moduleRoute}
-          </Typography>
-        </div>
-      ),
-      sortValue: (permission) => permission.moduleName,
-    },
-    ...permissionOptions.map(({ flag, label }) => ({
-      id: flag,
-      header: label,
-      align: 'center' as const,
-      minWidth: 120,
-      render: (permission: ModulePermission) => (
-        <FormControlLabel
-          control={(
-            <Switch
-              checked={draft[permission.moduleId]?.[flag] ?? permission[flag]}
-              disabled={!access.canUpdate || saveMutation.isPending}
-              onChange={() => togglePermission(permission.moduleId, flag)}
-            />
-          )}
-          label={draft[permission.moduleId]?.[flag] ?? permission[flag] ? 'Sí' : 'No'}
-          labelPlacement="end"
-          sx={{ m: 0 }}
-        />
-      ),
-      sortValue: (permission: ModulePermission) => permission[flag],
-    })),
-  ]
+  const loading = access.isLoading || moduleQuery.isLoading || permissionsQuery.isLoading
+  const error = moduleQuery.error ?? permissionsQuery.error ?? saveMutation.error
 
   return (
     <ModulePageLayout
@@ -141,8 +114,8 @@ export function ModulePermissionsPage() {
         { label: 'Configuración', to: '/settings' },
         { label: 'Módulos', to: '/app-modules' },
       ]}
-      description="Define qué operaciones puede realizar cada perfil en los módulos asignados."
-      title="Permisos por módulo"
+      description="Configura las operaciones disponibles para cada perfil asignado."
+      title={moduleQuery.data ? `Permisos de ${moduleQuery.data.name}` : 'Permisos del módulo'}
     >
       {!access.isLoading && !access.canRead && (
         <Alert severity="error">No tienes permiso para consultar la configuración de módulos.</Alert>
@@ -150,23 +123,27 @@ export function ModulePermissionsPage() {
 
       {access.canRead && (
         <>
-          <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 3, p: 3 }}>
+          <Paper
+            elevation={0}
+            sx={{ border: '1px solid', borderColor: 'divider', mb: 3, p: { xs: 2, sm: 3 } }}
+          >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <TextField
-                disabled={profilesQuery.isLoading || saveMutation.isPending}
-                label="Perfil"
-                onChange={(event) => {
-                  setProfileId(event.target.value)
-                  setDraft({})
-                }}
-                select
-                sx={{ minWidth: { sm: 280 } }}
-                value={selectedProfileId}
-              >
-                {profiles.map((profile) => (
-                  <MenuItem key={profile.id} value={profile.id}>{profile.name}</MenuItem>
-                ))}
-              </TextField>
+              <div className="flex items-center gap-3">
+                <div
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-lg"
+                  style={{ backgroundColor: 'rgba(117, 103, 232, .14)', color: '#7567e8' }}
+                >
+                  <MaterialSymbol name="shield" size={25} />
+                </div>
+                <div>
+                  <Typography sx={{ fontWeight: 750 }} variant="h6">
+                    {moduleQuery.data?.name ?? 'Módulo'}
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    {moduleQuery.data?.route ?? 'Cargando información...'}
+                  </Typography>
+                </div>
+              </div>
               {access.canUpdate && (
                 <Button
                   disabled={changedPermissions.length === 0 || saveMutation.isPending}
@@ -182,21 +159,67 @@ export function ModulePermissionsPage() {
             </div>
           </Paper>
 
-          {(profilesQuery.error || permissionsQuery.error || saveMutation.error) && (
+          {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {getApiErrorMessage(saveMutation.error ?? permissionsQuery.error ?? profilesQuery.error)}
+              {getApiErrorMessage(error)}
             </Alert>
           )}
 
-          <DynamicDataTable
-            columns={columns}
-            data={permissionsQuery.data ?? []}
-            emptyMessage={selectedProfileId
-              ? 'Este perfil no tiene módulos asignados.'
-              : 'Selecciona un perfil para consultar sus permisos.'}
-            getRowId={(permission) => permission.moduleId}
-            loading={profilesQuery.isLoading || permissionsQuery.isLoading}
-          />
+          {loading && (
+            <div className="grid min-h-52 place-items-center">
+              <CircularProgress aria-label="Cargando permisos" />
+            </div>
+          )}
+
+          {!loading && !error && permissions.length === 0 && (
+            <Alert severity="info">
+              Este módulo no tiene perfiles configurables asignados.
+            </Alert>
+          )}
+
+          {!loading && !error && permissions.length > 0 && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {permissions.map((permission) => {
+                const current = draft[permission.profileId] ?? permission
+                return (
+                  <Paper
+                    elevation={0}
+                    key={permission.profileId}
+                    sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}
+                  >
+                    <div className="flex items-center gap-3 p-4 sm:p-5">
+                      <MaterialSymbol name="person_shield" size={28} style={{ color: '#7567e8' }} />
+                      <div>
+                        <Typography sx={{ fontWeight: 750 }} variant="h6">
+                          {permission.profileName}
+                        </Typography>
+                        <Typography color="text.secondary" variant="caption">
+                          Acciones permitidas
+                        </Typography>
+                      </div>
+                    </div>
+                    <Divider />
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 p-4 sm:p-5">
+                      {permissionOptions.map(({ flag, label }) => (
+                        <FormControlLabel
+                          control={(
+                            <Checkbox
+                              checked={current[flag]}
+                              disabled={!access.canUpdate || saveMutation.isPending}
+                              onChange={() => togglePermission(permission, flag)}
+                            />
+                          )}
+                          key={flag}
+                          label={label}
+                          sx={{ m: 0 }}
+                        />
+                      ))}
+                    </div>
+                  </Paper>
+                )
+              })}
+            </div>
+          )}
         </>
       )}
     </ModulePageLayout>

@@ -119,7 +119,7 @@ export const router = createBrowserRouter([
           { path: '/app-modules/register', element: <StandardCrudEditorPage config={moduleConfig} mode="create" /> },
           { path: '/app-modules/details/:recordId', element: <StandardCrudDetailsPage config={moduleConfig} /> },
           { path: '/app-modules/update/:recordId', element: <StandardCrudEditorPage config={moduleConfig} mode="update" /> },
-          { path: '/app-modules/permissions', element: <ModulePermissionsPage /> },
+          { path: '/app-modules/:moduleId/permissions', element: <ModulePermissionsPage /> },
           { path: '/global-variables', element: <ModulePendingPage title="Variables globales" /> },
           { path: '/', element: <Navigate to="/dashboard" replace /> },
         ],

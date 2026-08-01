@@ -150,11 +150,14 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
       id: 'actions',
       header: 'Acciones',
       align: 'center',
-      minWidth: 150,
+      minWidth: config.permissionsPath ? 190 : 150,
       render: (record: CrudRecord) => (
         <TableRowActions
           onDelete={access.canDelete ? () => setRecordToDelete(record) : undefined}
           onEdit={access.canUpdate ? () => navigate(`${config.basePath}/update/${record.id}`) : undefined}
+          onConfigurePermissions={config.permissionsPath && access.canRead
+            ? () => navigate(config.permissionsPath!(record.id))
+            : undefined}
           onView={access.canRead ? () => navigate(`${config.basePath}/details/${record.id}`) : undefined}
         />
       ),
@@ -165,15 +168,6 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
     <ModulePageLayout
       actions={(
         <div className="flex flex-wrap justify-end gap-3">
-          {config.permissionsPath && access.canUpdate && (
-            <Button
-              onClick={() => navigate(config.permissionsPath!)}
-              startIcon={<MaterialSymbol name="admin_panel_settings" size={20} />}
-              variant="outlined"
-            >
-              Configurar permisos
-            </Button>
-          )}
           {config.listAction && access.canCreate && (
             <Button
               disabled={listActionMutation.isPending}

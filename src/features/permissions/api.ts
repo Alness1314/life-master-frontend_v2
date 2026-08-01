@@ -22,15 +22,15 @@ export interface PermissionUpdateRequest {
   canDelete: boolean
 }
 
-export function useProfilePermissions(profileId?: string) {
+export function useModulePermissions(moduleId?: string) {
   return useQuery({
-    queryKey: ['permissions', profileId],
+    queryKey: ['permissions', 'module', moduleId],
     queryFn: async () => (
       await apiClient.get<ModulePermission[]>(API_ROUTES.permissions.root, {
-        params: { profileId },
+        params: { moduleId },
       })
     ).data,
-    enabled: Boolean(profileId),
+    enabled: Boolean(moduleId),
   })
 }
 

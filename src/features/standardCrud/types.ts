@@ -53,7 +53,7 @@ export interface CrudModuleConfig {
   detailLayout?: 'default' | 'document'
   dynamicOptions?: CrudDynamicOptions | CrudDynamicOptions[]
   listAction?: CrudListAction
-  permissionsPath?: string
+  permissionsPath?: (recordId: string) => string
   toFormValues?: (record: CrudRecord) => CrudFormValues
   normalizeRequest?: (values: CrudFormValues) => Record<string, unknown>
 }
