@@ -46,16 +46,27 @@ function getModuleIcon(module: SidebarModule) {
   return <MaterialSymbol name={icon} />
 }
 
+function isCatalogsModule(module: SidebarModule) {
+  const normalizedName = module.name
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  return normalizedName === 'catalogos'
+}
+
 function getSidebarRoute(module: SidebarModule) {
-  const isCatalogs = module.name.toLowerCase() === 'catálogos'
-    || module.name.toLowerCase() === 'catalogos'
-  return isCatalogs ? '/catalogs' : module.route
+  return isCatalogsModule(module) ? '/catalogs' : module.route
+}
+
+function isDashboardRoute(module: SidebarModule) {
+  return module.route.trim().replace(/^\/+|\/+$/g, '').toLowerCase() === 'dashboard'
 }
 
 export function MainLayout() {
   const navigate = useNavigate()
   const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
+  const isDesktop = useMediaQuery(theme.breakpoints.up('xl'))
   const location = useLocation()
   const { user, logout } = useAuth()
   const { mode, toggleColorMode } = useColorMode()
@@ -80,12 +91,14 @@ export function MainLayout() {
       route: '/dashboard',
       icon: <MaterialSymbol name="monitoring" />,
     }] : []),
-    ...sidebarModules.filter((module) => module.route !== '/dashboard').map((module) => ({
-      id: module.id,
-      name: module.name,
-      route: getSidebarRoute(module),
-      icon: getModuleIcon(module),
-    })),
+    ...sidebarModules
+      .filter((module) => !isDashboardRoute(module) || isCatalogsModule(module))
+      .map((module) => ({
+        id: module.id,
+        name: module.name,
+        route: getSidebarRoute(module),
+        icon: getModuleIcon(module),
+      })),
   ]
   const [mobileOpen, setMobileOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
@@ -166,11 +179,11 @@ export function MainLayout() {
           borderBottom: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
-          ml: { md: `${drawerWidth}px` },
-          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ml: { xl: `${drawerWidth}px` },
+          width: { xl: `calc(100% - ${drawerWidth}px)` },
         }}
       >
-        <Toolbar sx={{ minHeight: '72px !important', px: { xs: 2, sm: 3 } }}>
+        <Toolbar sx={{ minHeight: '64px !important', px: { xs: 2, sm: 3 } }}>
           {!isDesktop && (
             <IconButton aria-label="Abrir menú" edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
               <MaterialSymbol name="menu" />
@@ -213,13 +226,13 @@ export function MainLayout() {
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
+      <Box component="nav" sx={{ width: { xl: drawerWidth }, flexShrink: { xl: 0 } }}>
         <Drawer
           ModalProps={{ keepMounted: true }}
           onClose={() => setMobileOpen(false)}
           open={mobileOpen}
           variant="temporary"
-          sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
+          sx={{ display: { xs: 'block', xl: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
         >
           {drawer}
         </Drawer>
@@ -227,7 +240,7 @@ export function MainLayout() {
           open
           variant="permanent"
           sx={{
-            display: { xs: 'none', md: 'block' },
+            display: { xs: 'none', xl: 'block' },
             '& .MuiDrawer-paper': { width: drawerWidth, border: 0 },
           }}
         >
@@ -247,8 +260,8 @@ export function MainLayout() {
           overflow: 'hidden',
         }}
       >
-        <Toolbar sx={{ minHeight: '72px !important' }} />
-        <div className="mx-auto min-h-0 w-full max-w-[1800px] flex-1 overflow-hidden px-3 py-5 sm:px-4 sm:py-7">
+        <Toolbar sx={{ minHeight: '64px !important' }} />
+        <div className="mx-auto min-h-0 w-full max-w-[1800px] flex-1 overflow-hidden px-3 py-3 sm:px-4 sm:py-4 xl:py-5">
           <ModuleAccessBoundary>
             <Outlet />
           </ModuleAccessBoundary>
