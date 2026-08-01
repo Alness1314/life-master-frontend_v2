@@ -24,7 +24,7 @@ import type { MouseEvent } from 'react'
 import { MaterialSymbol } from '../components/icons/MaterialSymbol'
 import { useAuth } from '../auth/useAuth'
 import { useColorMode } from '../theme/useColorMode'
-import { useSidebarModules } from '../features/modules/api'
+import { useModulePermission, useSidebarModules } from '../features/modules/api'
 import type { SidebarModule } from '../features/modules/api'
 import { useCurrentUser } from '../features/users/api'
 import { apiClient } from '../api/client'
@@ -72,14 +72,15 @@ export function MainLayout() {
     enabled: Boolean(user && currentUser?.imageId),
   })
   const { data: sidebarModules = [] } = useSidebarModules()
+  const dashboardAccess = useModulePermission('dashboard')
   const navigation = [
-    {
+    ...(dashboardAccess.canRead ? [{
       id: 'fixed-dashboard',
       name: 'Dashboard',
       route: '/dashboard',
       icon: <MaterialSymbol name="monitoring" />,
-    },
-    ...sidebarModules.map((module) => ({
+    }] : []),
+    ...sidebarModules.filter((module) => module.route !== '/dashboard').map((module) => ({
       id: module.id,
       name: module.name,
       route: getSidebarRoute(module),

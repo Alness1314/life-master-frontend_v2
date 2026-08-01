@@ -11,6 +11,7 @@ interface RoutePermission {
 }
 
 const routePermissions: RoutePermission[] = [
+  { pattern: /^\/dashboard(?:\/|$)/, permissionKey: 'dashboard' },
   { pattern: /^\/users(?:\/|$)/, permissionKey: 'users' },
   { pattern: /^\/asistencia(?:\/|$)/, permissionKey: 'asistencia' },
   { pattern: /^\/expenses(?:\/|$)/, permissionKey: 'expenses' },

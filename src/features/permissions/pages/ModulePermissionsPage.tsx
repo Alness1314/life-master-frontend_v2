@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Alert,
   Button,
@@ -50,28 +50,16 @@ export function ModulePermissionsPage() {
   const { showSuccess } = useFeedback()
   const access = useModulePermission('app-modules')
   const profilesQuery = useProfiles()
+  const profiles = (profilesQuery.data ?? [])
+    .filter((profile) => profile.name.toLowerCase() !== 'administrator')
   const [profileId, setProfileId] = useState('')
-  const permissionsQuery = useProfilePermissions(profileId)
+  const selectedProfileId = profileId || profiles[0]?.id || ''
+  const permissionsQuery = useProfilePermissions(selectedProfileId)
   const [draft, setDraft] = useState<Record<string, ModulePermission>>({})
 
-  useEffect(() => {
-    if (!profileId && profilesQuery.data?.length) {
-      setProfileId(profilesQuery.data[0].id)
-    }
-  }, [profileId, profilesQuery.data])
-
-  useEffect(() => {
-    setDraft(Object.fromEntries(
-      (permissionsQuery.data ?? []).map((permission) => [permission.moduleId, permission]),
-    ))
-  }, [permissionsQuery.data])
-
   const changedPermissions = useMemo(() => {
-    const original = new Map(
-      (permissionsQuery.data ?? []).map((permission) => [permission.moduleId, permission]),
-    )
     return Object.values(draft).filter((permission) => {
-      const previous = original.get(permission.moduleId)
+      const previous = permissionsQuery.data?.find((item) => item.moduleId === permission.moduleId)
       return previous && permissionOptions.some(({ flag }) => previous[flag] !== permission[flag])
     })
   }, [draft, permissionsQuery.data])
@@ -82,21 +70,25 @@ export function ModulePermissionsPage() {
     ))),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['permissions', profileId] }),
+        queryClient.invalidateQueries({ queryKey: ['permissions', selectedProfileId] }),
         queryClient.invalidateQueries({ queryKey: ['current-user-modules'] }),
       ])
+      setDraft({})
       showSuccess('Permisos actualizados correctamente.')
     },
   })
 
   const togglePermission = (moduleId: string, flag: PermissionFlag) => {
+    const currentPermission = draft[moduleId]
+      ?? permissionsQuery.data?.find((permission) => permission.moduleId === moduleId)
+    if (!currentPermission) return
     setDraft((current) => ({
       ...current,
-      [moduleId]: { ...current[moduleId], [flag]: !current[moduleId][flag] },
+      [moduleId]: { ...currentPermission, [flag]: !currentPermission[flag] },
     }))
   }
 
-  const columns = useMemo<DataTableColumn<ModulePermission>[]>(() => [
+  const columns: DataTableColumn<ModulePermission>[] = [
     {
       id: 'module',
       header: 'Módulo',
@@ -132,7 +124,7 @@ export function ModulePermissionsPage() {
       ),
       sortValue: (permission: ModulePermission) => permission[flag],
     })),
-  ], [access.canUpdate, draft, saveMutation.isPending])
+  ]
 
   return (
     <ModulePageLayout
@@ -163,12 +155,15 @@ export function ModulePermissionsPage() {
               <TextField
                 disabled={profilesQuery.isLoading || saveMutation.isPending}
                 label="Perfil"
-                onChange={(event) => setProfileId(event.target.value)}
+                onChange={(event) => {
+                  setProfileId(event.target.value)
+                  setDraft({})
+                }}
                 select
                 sx={{ minWidth: { sm: 280 } }}
-                value={profileId}
+                value={selectedProfileId}
               >
-                {(profilesQuery.data ?? []).map((profile) => (
+                {profiles.map((profile) => (
                   <MenuItem key={profile.id} value={profile.id}>{profile.name}</MenuItem>
                 ))}
               </TextField>
@@ -195,8 +190,8 @@ export function ModulePermissionsPage() {
 
           <DynamicDataTable
             columns={columns}
-            data={Object.values(draft)}
-            emptyMessage={profileId
+            data={permissionsQuery.data ?? []}
+            emptyMessage={selectedProfileId
               ? 'Este perfil no tiene módulos asignados.'
               : 'Selecciona un perfil para consultar sus permisos.'}
             getRowId={(permission) => permission.moduleId}
