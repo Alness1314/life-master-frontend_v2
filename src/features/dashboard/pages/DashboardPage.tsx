@@ -41,6 +41,20 @@ const months = [
 
 const chartColors = ['#7567e8', '#43a047', '#ef8f35', '#42a5f5', '#ec407a', '#ab47bc']
 
+const chartCardSx = {
+  border: '1px solid',
+  borderColor: 'divider',
+  height: { lg: 410, xl: 430 },
+  overflow: { xs: 'visible', lg: 'hidden' },
+}
+
+const chartCardContentSx = {
+  height: { xs: 'auto', lg: '100%' },
+  overflow: { xs: 'visible', lg: 'hidden' },
+  p: { xs: 2, sm: 2.5 },
+  '&:last-child': { pb: { xs: 2.5, sm: 2.5 } },
+}
+
 function CashFlowChart({
   income,
   expenses,
@@ -71,12 +85,12 @@ function CashFlowChart({
   ]
   const savingsRate = inflows > 0 ? (balance / inflows) * 100 : 0
   return (
-    <div className="mt-5 flex flex-col items-center gap-6" aria-label="Comparación de ingresos y gastos">
+    <div className="flex flex-col items-center gap-4 pt-5 sm:gap-6 sm:pt-6" aria-label="Comparación de ingresos y gastos">
       <div
-        className="relative mx-auto grid h-40 w-40 place-items-center rounded-full shadow-[0_0_28px_rgba(117,103,232,.18)]"
+        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)] sm:h-40 sm:w-40 sm:shadow-[0_0_28px_rgba(117,103,232,.18)]"
         style={{ background, border: total ? 'none' : '12px solid rgba(117, 103, 232, .16)' }}
       >
-        <Box className="grid h-[106px] w-[106px] place-items-center rounded-full text-center shadow-inner" sx={{ bgcolor: 'background.paper' }}>
+        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner sm:h-[106px] sm:w-[106px]" sx={{ bgcolor: 'background.paper' }}>
           <div>
             <MaterialSymbol name="account_balance_wallet" size={22} style={{ color: '#7567e8' }} />
             <Typography color="text.secondary" variant="caption">Balance</Typography>
@@ -119,12 +133,12 @@ function DebtStatusDonut({
   const degrees = visiblePercentage * 3.6
   const color = '#43a047'
   return (
-    <div className="mt-5 flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-4 pt-5 sm:gap-6 sm:pt-6">
       <div
-        className="relative mx-auto grid h-40 w-40 place-items-center rounded-full shadow-[0_0_28px_rgba(117,103,232,.18)]"
+        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)] sm:h-40 sm:w-40 sm:shadow-[0_0_28px_rgba(117,103,232,.18)]"
         style={{ background: `conic-gradient(${color} 0deg ${degrees}deg, rgba(117,103,232,.14) ${degrees}deg 360deg)` }}
       >
-        <Box className="grid h-[106px] w-[106px] place-items-center rounded-full text-center shadow-inner" sx={{ bgcolor: 'background.paper' }}>
+        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner sm:h-[106px] sm:w-[106px]" sx={{ bgcolor: 'background.paper' }}>
           <div>
             <MaterialSymbol name="request_quote" size={22} style={{ color }} />
             <Typography color="text.secondary" variant="caption">Liquidado</Typography>
@@ -134,11 +148,11 @@ function DebtStatusDonut({
       </div>
       <div className="grid w-full grid-cols-2 gap-4 border-0 border-t border-solid border-black/10 pt-4 text-center dark:border-white/10">
         <div>
-          <Typography color="text.secondary">Saldo pendiente</Typography>
+          <Typography color="text.secondary" variant="body2">Saldo pendiente</Typography>
           <Typography sx={{ mt: 0.5 }} variant="h6">{format(outstanding)}</Typography>
         </div>
         <div>
-          <Typography color="text.secondary">Monto liquidado</Typography>
+          <Typography color="text.secondary" variant="body2">Monto liquidado</Typography>
           <Typography sx={{ mt: 0.5 }} variant="h6">{format(paid)}</Typography>
         </div>
       </div>
@@ -167,16 +181,16 @@ function CategoryDonut({
   const background = total ? `conic-gradient(${segments.join(',')})` : 'rgba(117, 103, 232, .14)'
 
   return (
-    <div className="mt-5 flex min-h-0 flex-col items-center gap-6">
+    <div className="flex min-h-0 flex-col items-center gap-4 pt-5 sm:gap-6 sm:pt-6">
       <div
         aria-label={`Gastos totales ${format(total)}`}
-        className="relative mx-auto grid h-40 w-40 place-items-center rounded-full shadow-[0_0_28px_rgba(117,103,232,.18)]"
+        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)] sm:h-40 sm:w-40 sm:shadow-[0_0_28px_rgba(117,103,232,.18)]"
         style={{
           background,
           border: total ? 'none' : '12px solid rgba(117, 103, 232, .16)',
         }}
       >
-        <Box className="grid h-[106px] w-[106px] place-items-center rounded-full text-center shadow-inner" sx={{ bgcolor: 'background.paper' }}>
+        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner sm:h-[106px] sm:w-[106px]" sx={{ bgcolor: 'background.paper' }}>
           <div>
             <MaterialSymbol name={total ? 'donut_large' : 'data_usage'} size={22} style={{ color: '#7567e8' }} />
             <Typography color="text.secondary" variant="caption">{total ? 'Total' : 'Sin gastos'}</Typography>
@@ -212,6 +226,7 @@ export function DashboardPage() {
   const { user } = useAuth()
   const { showError } = useFeedback()
   const { data: currentUser } = useCurrentUser()
+  const displayName = currentUser?.fullName?.trim() || 'Usuario'
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const summaryQuery = useQuery({
@@ -255,11 +270,20 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto md:overflow-hidden">
       <BreadcrumbNav current="Dashboard" />
       <div className="flex shrink-0 flex-wrap items-end justify-between gap-4">
-        <div>
-          <Typography variant="h4">Hola, {currentUser?.fullName || user?.username}</Typography>
+        <div className="min-w-0 max-w-full">
+          <Typography
+            sx={{
+              fontSize: { xs: '1.75rem', sm: '2.125rem' },
+              lineHeight: 1.15,
+              overflowWrap: 'anywhere',
+            }}
+            variant="h4"
+          >
+            Hola, {displayName}
+          </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Consulta el resumen de tu actividad financiera.
           </Typography>
@@ -296,7 +320,7 @@ export function DashboardPage() {
         <Alert severity="error">No fue posible cargar el resumen financiero.</Alert>
       )}
       {summaryQuery.data && (
-        <div className="grid min-h-0 flex-1 content-start grid-rows-[auto_auto_auto] gap-4 overflow-y-auto">
+        <div className="grid content-start grid-rows-[auto_auto_auto] gap-4 pb-4 md:min-h-0 md:flex-1 md:overflow-y-auto">
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             {summaryCards.map((card) => (
               <Card key={card.label} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
@@ -321,10 +345,10 @@ export function DashboardPage() {
           </div>
 
           <div className="grid min-h-0 items-start gap-4 lg:grid-cols-3">
-            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: { lg: 410, xl: 430 }, overflow: 'hidden' }}>
-              <CardContent sx={{ height: '100%', overflow: 'hidden', p: 2.5 }}>
+            <Card elevation={0} sx={chartCardSx}>
+              <CardContent sx={chartCardContentSx}>
                 <Typography variant="h6">Flujo del mes</Typography>
-                <Typography color="text.secondary">Comparación entre entradas y salidas.</Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.25 }} variant="body2">Comparación entre entradas y salidas.</Typography>
                 <CashFlowChart
                   balance={Number(summaryQuery.data.netBalance)}
                   debtPayments={Number(summaryQuery.data.debtPayments)}
@@ -335,20 +359,20 @@ export function DashboardPage() {
                 />
               </CardContent>
             </Card>
-            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: { lg: 410, xl: 430 }, overflow: 'hidden' }}>
-              <CardContent sx={{ height: '100%', overflow: 'hidden', p: 2.5 }}>
+            <Card elevation={0} sx={chartCardSx}>
+              <CardContent sx={chartCardContentSx}>
                 <Typography variant="h6">Gastos por categoría</Typography>
-                <Typography color="text.secondary">Distribución del gasto mensual.</Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.25 }} variant="body2">Distribución del gasto mensual.</Typography>
                 <CategoryDonut
                   categories={summaryQuery.data.expensesByCategory}
                   format={(value) => money.format(value)}
                 />
               </CardContent>
             </Card>
-            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: { lg: 410, xl: 430 }, overflow: 'hidden' }}>
-              <CardContent sx={{ height: '100%', overflow: 'hidden', p: 2.5 }}>
+            <Card elevation={0} sx={chartCardSx}>
+              <CardContent sx={chartCardContentSx}>
                 <Typography variant="h6">Estado de las deudas</Typography>
-                <Typography color="text.secondary">Avance general y próximos compromisos.</Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.25 }} variant="body2">Avance general y próximos compromisos.</Typography>
                 <DebtStatusDonut
                   format={(value) => money.format(value)}
                   outstanding={Number(summaryQuery.data.outstandingDebt)}

@@ -70,8 +70,7 @@ export function MainLayout() {
     ).data),
     enabled: Boolean(user && currentUser?.imageId),
   })
-  const profileId = currentUser?.profiles?.[0]?.id
-  const { data: sidebarModules = [] } = useSidebarModules(profileId)
+  const { data: sidebarModules = [] } = useSidebarModules()
   const navigation = [
     {
       id: 'fixed-dashboard',

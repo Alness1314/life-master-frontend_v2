@@ -13,12 +13,12 @@ export interface SidebarModule {
   isParent: boolean
 }
 
-function useModulesByLevel(profileId: string | undefined, level: 'sidebar' | 'menu' | 'settings') {
+function useModulesByLevel(level: 'sidebar' | 'menu' | 'settings') {
   return useQuery({
-    queryKey: ['modules', profileId, level],
+    queryKey: ['current-user-modules', level],
     queryFn: async () => {
-      const { data } = await apiClient.get<SidebarModule[]>(API_ROUTES.modules.all, {
-        params: { profile: profileId, level },
+      const { data } = await apiClient.get<SidebarModule[]>(API_ROUTES.profile.modules, {
+        params: { level },
       })
       return data
         .filter((module) => !module.erased)
@@ -31,18 +31,17 @@ function useModulesByLevel(profileId: string | undefined, level: 'sidebar' | 'me
         })
         .sort((left, right) => left.name.localeCompare(right.name))
     },
-    enabled: Boolean(profileId),
   })
 }
 
-export function useSidebarModules(profileId?: string) {
-  return useModulesByLevel(profileId, 'sidebar')
+export function useSidebarModules() {
+  return useModulesByLevel('sidebar')
 }
 
-export function useMenuModules(profileId?: string) {
-  return useModulesByLevel(profileId, 'menu')
+export function useMenuModules() {
+  return useModulesByLevel('menu')
 }
 
-export function useSettingsModules(profileId?: string) {
-  return useModulesByLevel(profileId, 'settings')
+export function useSettingsModules() {
+  return useModulesByLevel('settings')
 }

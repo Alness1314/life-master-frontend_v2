@@ -11,7 +11,6 @@ import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { ModulePageLayout } from '../../../components/layout/ModulePageLayout'
 import { useSettingsModules } from '../../modules/api'
 import type { SidebarModule } from '../../modules/api'
-import { useCurrentUser } from '../../users/api'
 
 function getMaterialIcon(module: SidebarModule) {
   const iconName = module.iconName?.trim().toLowerCase()
@@ -20,16 +19,14 @@ function getMaterialIcon(module: SidebarModule) {
 
 export function SettingsPage() {
   const navigate = useNavigate()
-  const { data: currentUser, isLoading: isLoadingUser, error: userError } = useCurrentUser()
-  const profileId = currentUser?.profiles?.[0]?.id
   const {
     data: modules = [],
     isLoading: isLoadingModules,
     error: modulesError,
-  } = useSettingsModules(profileId)
+  } = useSettingsModules()
 
-  const isLoading = isLoadingUser || (Boolean(profileId) && isLoadingModules)
-  const error = userError || modulesError
+  const isLoading = isLoadingModules
+  const error = modulesError
 
   return (
     <ModulePageLayout

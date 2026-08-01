@@ -88,6 +88,7 @@ export const API_ROUTES = {
   },
   profile: {
     me: '/users/me',
+    modules: '/users/me/modules',
   },
   files: {
     root: (userId: string) => `/users/${userId}/files`,

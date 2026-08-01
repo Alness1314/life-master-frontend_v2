@@ -51,7 +51,7 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: ['current-user', user?.id],
     queryFn: async () => {
-      const { data } = await apiClient.get<CurrentUser>(API_ROUTES.users.byId(user!.id))
+      const { data } = await apiClient.get<CurrentUser>(API_ROUTES.profile.me)
       return data
     },
     enabled: Boolean(user?.id),

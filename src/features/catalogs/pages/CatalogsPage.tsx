@@ -2,7 +2,6 @@ import { Alert, Card, CardActionArea, CardContent, CircularProgress, Typography 
 import { useNavigate } from 'react-router-dom'
 import { useMenuModules } from '../../modules/api'
 import type { SidebarModule } from '../../modules/api'
-import { useCurrentUser } from '../../users/api'
 import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { ModulePageLayout } from '../../../components/layout/ModulePageLayout'
 
@@ -13,16 +12,14 @@ function getMaterialIcon(module: SidebarModule) {
 
 export function CatalogsPage() {
   const navigate = useNavigate()
-  const { data: currentUser, isLoading: isLoadingUser, error: userError } = useCurrentUser()
-  const profileId = currentUser?.profiles?.[0]?.id
   const {
     data: modules = [],
     isLoading: isLoadingModules,
     error: modulesError,
-  } = useMenuModules(profileId)
+  } = useMenuModules()
 
-  const isLoading = isLoadingUser || (Boolean(profileId) && isLoadingModules)
-  const error = userError || modulesError
+  const isLoading = isLoadingModules
+  const error = modulesError
 
   return (
     <ModulePageLayout
