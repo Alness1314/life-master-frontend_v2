@@ -44,13 +44,14 @@ const chartColors = ['#7567e8', '#43a047', '#ef8f35', '#42a5f5', '#ec407a', '#ab
 const chartCardSx = {
   border: '1px solid',
   borderColor: 'divider',
-  minHeight: { lg: 410, xl: 430 },
-  overflow: 'visible',
+  height: '100%',
+  overflow: 'hidden',
 }
 
 const chartCardContentSx = {
-  p: { xs: 2, sm: 2.5 },
-  '&:last-child': { pb: { xs: 2.5, sm: 2.5 } },
+  height: '100%',
+  p: { xs: 2, sm: 2.25 },
+  '&:last-child': { pb: { xs: 2, sm: 2.25 } },
 }
 
 function CashFlowChart({
@@ -83,12 +84,12 @@ function CashFlowChart({
   ]
   const savingsRate = inflows > 0 ? (balance / inflows) * 100 : 0
   return (
-    <div className="flex flex-col items-center gap-4 pt-5 sm:gap-6 sm:pt-6" aria-label="Comparación de ingresos y gastos">
+    <div className="flex flex-col items-center gap-3 pt-3" aria-label="Comparación de ingresos y gastos">
       <div
-        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)] sm:h-40 sm:w-40 sm:shadow-[0_0_28px_rgba(117,103,232,.18)]"
+        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)]"
         style={{ background, border: total ? 'none' : '12px solid rgba(117, 103, 232, .16)' }}
       >
-        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner sm:h-[106px] sm:w-[106px]" sx={{ bgcolor: 'background.paper' }}>
+        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner" sx={{ bgcolor: 'background.paper' }}>
           <div>
             <MaterialSymbol name="account_balance_wallet" size={22} style={{ color: '#7567e8' }} />
             <Typography color="text.secondary" variant="caption">Balance</Typography>
@@ -96,7 +97,7 @@ function CashFlowChart({
           </div>
         </Box>
       </div>
-      <div className="grid w-full grid-cols-2 gap-4 border-0 border-t border-solid border-black/10 pt-4 dark:border-white/10">
+      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 border-0 border-t border-solid border-black/10 pt-3 dark:border-white/10">
         {rows.map((row) => (
           <div className="text-center" key={row.label}>
             <div className="flex items-center justify-center gap-2">
@@ -131,12 +132,12 @@ function DebtStatusDonut({
   const degrees = visiblePercentage * 3.6
   const color = '#43a047'
   return (
-    <div className="flex flex-col items-center gap-4 pt-5 sm:gap-6 sm:pt-6">
+    <div className="flex flex-col items-center gap-3 pt-3">
       <div
-        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)] sm:h-40 sm:w-40 sm:shadow-[0_0_28px_rgba(117,103,232,.18)]"
+        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)]"
         style={{ background: `conic-gradient(${color} 0deg ${degrees}deg, rgba(117,103,232,.14) ${degrees}deg 360deg)` }}
       >
-        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner sm:h-[106px] sm:w-[106px]" sx={{ bgcolor: 'background.paper' }}>
+        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner" sx={{ bgcolor: 'background.paper' }}>
           <div>
             <MaterialSymbol name="request_quote" size={22} style={{ color }} />
             <Typography color="text.secondary" variant="caption">Liquidado</Typography>
@@ -144,7 +145,7 @@ function DebtStatusDonut({
           </div>
         </Box>
       </div>
-      <div className="grid w-full grid-cols-2 gap-4 border-0 border-t border-solid border-black/10 pt-4 text-center dark:border-white/10">
+      <div className="grid w-full grid-cols-2 gap-4 border-0 border-t border-solid border-black/10 pt-3 text-center dark:border-white/10">
         <div>
           <Typography color="text.secondary" variant="body2">Saldo pendiente</Typography>
           <Typography sx={{ mt: 0.5 }} variant="h6">{format(outstanding)}</Typography>
@@ -179,16 +180,16 @@ function CategoryDonut({
   const background = total ? `conic-gradient(${segments.join(',')})` : 'rgba(117, 103, 232, .14)'
 
   return (
-    <div className="flex min-h-0 flex-col items-center gap-4 pt-5 sm:gap-6 sm:pt-6">
+    <div className="flex min-h-0 flex-col items-center gap-3 pt-3">
       <div
         aria-label={`Gastos totales ${format(total)}`}
-        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)] sm:h-40 sm:w-40 sm:shadow-[0_0_28px_rgba(117,103,232,.18)]"
+        className="relative mx-auto grid h-32 w-32 place-items-center rounded-full shadow-[0_0_22px_rgba(117,103,232,.18)]"
         style={{
           background,
           border: total ? 'none' : '12px solid rgba(117, 103, 232, .16)',
         }}
       >
-        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner sm:h-[106px] sm:w-[106px]" sx={{ bgcolor: 'background.paper' }}>
+        <Box className="grid h-[84px] w-[84px] place-items-center rounded-full text-center shadow-inner" sx={{ bgcolor: 'background.paper' }}>
           <div>
             <MaterialSymbol name={total ? 'donut_large' : 'data_usage'} size={22} style={{ color: '#7567e8' }} />
             <Typography color="text.secondary" variant="caption">{total ? 'Total' : 'Sin gastos'}</Typography>
@@ -196,7 +197,7 @@ function CategoryDonut({
           </div>
         </Box>
       </div>
-      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 border-0 border-t border-solid border-black/10 pt-4 dark:border-white/10">
+      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 border-0 border-t border-solid border-black/10 pt-3 dark:border-white/10">
         {categories.map((category, index) => (
           <div className="flex items-center justify-between gap-3" key={category.categoryId}>
             <div className="flex min-w-0 items-center gap-2">
@@ -309,7 +310,7 @@ export function DashboardPage() {
           <Chip color="success" label="Sesión activa" variant="outlined" />
         </div>
       </div>
-      <Divider sx={{ mb: 2, mt: 1.75 }} />
+      <Divider sx={{ mb: 1.5, mt: 1.5 }} />
 
       {summaryQuery.isLoading && (
         <div className="grid min-h-52 place-items-center"><CircularProgress /></div>
@@ -319,15 +320,28 @@ export function DashboardPage() {
       )}
       {summaryQuery.data && (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="grid content-start gap-4 pb-4">
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+          <div className="grid content-start gap-3 pb-1">
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 1.25,
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                md: 'repeat(3, minmax(0, 1fr))',
+                lg: 'repeat(20, minmax(0, 1fr))',
+              },
+              '& > :nth-of-type(-n+5)': { gridColumn: { lg: 'span 4' } },
+              '& > :nth-of-type(n+6)': { gridColumn: { lg: 'span 5' } },
+            }}
+          >
             {summaryCards.map((card) => (
               <Card key={card.label} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <Typography color="text.secondary" variant="body2">{card.label}</Typography>
-                      <Typography sx={{ fontSize: { xs: '1.45rem', xl: '1.25rem' }, mt: 0.75, whiteSpace: 'nowrap' }} variant="h5">
+                      <Typography sx={{ fontSize: '1.2rem', mt: 0.35, whiteSpace: 'nowrap' }} variant="h5">
                         {money.format(card.value ?? 0)}
                       </Typography>
                     </div>
@@ -341,9 +355,9 @@ export function DashboardPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
+          </Box>
 
-          <div className="grid min-h-0 items-start gap-4 lg:grid-cols-3">
+          <div className="grid min-h-0 items-stretch gap-3 lg:grid-cols-3">
             <Card elevation={0} sx={chartCardSx}>
               <CardContent sx={chartCardContentSx}>
                 <Typography variant="h6">Flujo del mes</Typography>
@@ -382,10 +396,10 @@ export function DashboardPage() {
             </Card>
           </div>
           <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-            <CardContent className="flex flex-wrap items-center justify-between gap-4" sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3" sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
               <div className="flex items-center gap-4">
                 <div
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-lg"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg"
                   style={{ backgroundColor: 'rgba(117, 103, 232, .14)', color: '#7567e8' }}
                 >
                   <MaterialSymbol name="csv" />
