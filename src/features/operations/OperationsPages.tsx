@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { apiClient, getApiErrorMessage, getApiValidationErrors } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
 import { useFeedback } from '../../components/feedback/useFeedback'
+import { useModulePermission } from '../modules/api'
 import { FormCard } from '../../components/form/FormCard'
 import { FieldLabel } from '../../components/form/FieldLabel'
 import { FormPageLayout } from '../../components/form/FormPageLayout'
@@ -98,6 +99,7 @@ export function FinancialAlertsPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('alerts')
   const alertsQuery = useQuery({
     queryKey: ['financial-alerts', user?.id],
     queryFn: async () => (await apiClient.get<FinancialAlert[]>(API_ROUTES.alerts.root(user!.id))).data,
@@ -117,7 +119,7 @@ export function FinancialAlertsPage() {
 
   return (
     <ModulePageLayout
-      actions={(
+      actions={access.canCreate ? (
         <Button
           disabled={refreshMutation.isPending}
           onClick={() => refreshMutation.mutate()}
@@ -126,7 +128,7 @@ export function FinancialAlertsPage() {
         >
           Regenerar alertas
         </Button>
-      )}
+      ) : undefined}
       description="Revisa riesgos, vencimientos y situaciones que requieren atención."
       title="Alertas financieras"
     >
@@ -156,7 +158,7 @@ export function FinancialAlertsPage() {
                   {dateTime(alert.createdAt)}
                 </Typography>
               </div>
-              {!alert.read && (
+              {!alert.read && access.canUpdate && (
                 <Button onClick={() => readMutation.mutate(alert.id)} variant="outlined">
                   Marcar como leída
                 </Button>
@@ -174,6 +176,7 @@ export function FinancialRemindersPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('reminders')
   const [form, setForm] = useState({ title: '', message: '', scheduledAt: '' })
   const remindersQuery = useQuery({
     queryKey: ['financial-reminders', user?.id],
@@ -200,7 +203,7 @@ export function FinancialRemindersPage() {
       description="Programa avisos para pagos y compromisos financieros."
       title="Recordatorios financieros"
     >
-      <FormCard onSubmit={(event) => { event.preventDefault(); saveMutation.mutate() }}>
+      {access.canCreate && <FormCard onSubmit={(event) => { event.preventDefault(); saveMutation.mutate() }}>
         <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
           <TextField
             error={Boolean(saveMutation.error)}
@@ -243,7 +246,7 @@ export function FinancialRemindersPage() {
             Registrar recordatorio
           </Button>
         </div>
-      </FormCard>
+      </FormCard>}
       <div className="mt-5 grid gap-3">
         {remindersQuery.data?.map((reminder) => (
           <Paper className="flex flex-wrap items-center justify-between gap-4 p-5" elevation={0} key={reminder.id}>
@@ -257,7 +260,7 @@ export function FinancialRemindersPage() {
                 color={reminder.cancelled ? 'default' : reminder.delivered ? 'success' : 'warning'}
                 label={reminder.cancelled ? 'Cancelado' : reminder.delivered ? 'Entregado' : 'Pendiente'}
               />
-              {!reminder.cancelled && !reminder.delivered && (
+              {!reminder.cancelled && !reminder.delivered && access.canUpdate && (
                 <Button color="error" onClick={() => cancelMutation.mutate(reminder.id)} variant="outlined">
                   Cancelar
                 </Button>

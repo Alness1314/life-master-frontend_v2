@@ -19,6 +19,11 @@ export const API_ROUTES = {
   profiles: {
     root: '/profiles',
   },
+  permissions: {
+    root: '/permissions',
+    byProfileAndModule: (profileId: string, moduleId: string) =>
+      `/permissions/profiles/${profileId}/modules/${moduleId}`,
+  },
   categories: {
     root: '/category',
     byId: (categoryId: string) => `/category/${categoryId}`,

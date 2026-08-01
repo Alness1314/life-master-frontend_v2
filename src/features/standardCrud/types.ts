@@ -35,6 +35,7 @@ export interface CrudListAction {
 
 export interface CrudModuleConfig {
   key: string
+  permissionKey?: string
   singular: string
   plural: string
   basePath: string
@@ -52,6 +53,7 @@ export interface CrudModuleConfig {
   detailLayout?: 'default' | 'document'
   dynamicOptions?: CrudDynamicOptions | CrudDynamicOptions[]
   listAction?: CrudListAction
+  permissionsPath?: string
   toFormValues?: (record: CrudRecord) => CrudFormValues
   normalizeRequest?: (values: CrudFormValues) => Record<string, unknown>
 }

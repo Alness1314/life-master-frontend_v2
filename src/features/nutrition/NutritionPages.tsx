@@ -17,6 +17,7 @@ import { DynamicDataTable } from '../../components/table/DynamicDataTable'
 import type { DataTableColumn } from '../../components/table/DynamicDataTable'
 import { TableRowActions } from '../../components/table/TableRowActions'
 import { API_ROUTES } from '../../config/apiRoutes'
+import { useModulePermission } from '../modules/api'
 
 interface Food {
   id?: string
@@ -66,6 +67,7 @@ export function NutritionPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('nutrition')
   const [selected, setSelected] = useState<Nutrition | null>(null)
   const query = useQuery({
     queryKey: ['nutrition', user?.id],
@@ -88,11 +90,15 @@ export function NutritionPage() {
     { id: 'calories', header: 'Calorías', align: 'center', minWidth: 110, render: (row) => row.food?.reduce((sum, food) => sum + Number(food.calories ?? 0), 0) ?? 0 },
     {
       id: 'actions', header: 'Acciones', align: 'center', minWidth: 150,
-      render: (row) => <TableRowActions onDelete={() => setSelected(row)} onEdit={() => navigate(`/nutrition/update/${row.id}`)} onView={() => navigate(`/nutrition/details/${row.id}`)} />,
+      render: (row) => <TableRowActions
+        onDelete={access.canDelete ? () => setSelected(row) : undefined}
+        onEdit={access.canUpdate ? () => navigate(`/nutrition/update/${row.id}`) : undefined}
+        onView={access.canRead ? () => navigate(`/nutrition/details/${row.id}`) : undefined}
+      />,
     },
-  ], [navigate])
+  ], [access.canDelete, access.canRead, access.canUpdate, navigate])
   return <ModulePageLayout
-    actions={<Button onClick={() => navigate('/nutrition/register')} startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">Registrar comida</Button>}
+    actions={access.canCreate ? <Button onClick={() => navigate('/nutrition/register')} startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">Registrar comida</Button> : undefined}
     ancestors={[{ label: 'Catálogos', to: '/catalogs' }]}
     description="Registra tus comidas y alimentos consumidos."
     title="Nutrición"
@@ -155,10 +161,11 @@ export function NutritionDetailsPage() {
   const navigate = useNavigate()
   const { recordId } = useParams()
   const query = useNutrition(recordId)
+  const access = useModulePermission('nutrition')
   const record = query.data
   return <FormPageLayout actions={<Button onClick={() => navigate('/nutrition')} startIcon={<MaterialSymbol name="arrow_back" size={20} />} variant="outlined">Volver</Button>} ancestors={[{ label: 'Catálogos', to: '/catalogs' }, { label: 'Nutrición', to: '/nutrition' }]} description="Consulta los alimentos registrados en esta comida." title="Detalle de nutrición">
     {query.isLoading && <div className="grid min-h-64 place-items-center"><CircularProgress /></div>}
     {query.error && <Alert severity="error">No fue posible cargar el registro.</Alert>}
-    {record && <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}><div className="flex items-center justify-between gap-4 p-5"><div className="flex items-center gap-3"><MaterialSymbol name="nutrition" size={36} style={{ color: '#7567e8' }} /><div><Typography variant="h5">{mealLabel(record.mealType)}</Typography><Typography color="text.secondary">{new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(record.dateTimeConsumption))}</Typography></div></div><Button onClick={() => navigate(`/nutrition/update/${record.id}`)} startIcon={<MaterialSymbol name="edit" size={20} />} variant="contained">Editar</Button></div><Divider /><div className="grid gap-3 p-5">{record.food.map((food, index) => <Paper key={food.id ?? index} variant="outlined" sx={{ p: 2 }}><div className="grid gap-3 sm:grid-cols-4"><div><Typography color="text.secondary" variant="caption">Alimento</Typography><Typography>{food.foodName}</Typography></div><div><Typography color="text.secondary" variant="caption">Calorías</Typography><Typography>{food.calories}</Typography></div><div><Typography color="text.secondary" variant="caption">Cantidad</Typography><Typography>{food.quantity}</Typography></div><div><Typography color="text.secondary" variant="caption">Unidad</Typography><Typography>{food.unitMeasurement}</Typography></div></div></Paper>)}</div>{record.notes && <><Divider /><div className="p-5"><Typography color="text.secondary" variant="body2">Notas</Typography><Typography sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>{record.notes}</Typography></div></>}</Paper>}
+    {record && <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}><div className="flex items-center justify-between gap-4 p-5"><div className="flex items-center gap-3"><MaterialSymbol name="nutrition" size={36} style={{ color: '#7567e8' }} /><div><Typography variant="h5">{mealLabel(record.mealType)}</Typography><Typography color="text.secondary">{new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(record.dateTimeConsumption))}</Typography></div></div>{access.canUpdate && <Button onClick={() => navigate(`/nutrition/update/${record.id}`)} startIcon={<MaterialSymbol name="edit" size={20} />} variant="contained">Editar</Button>}</div><Divider /><div className="grid gap-3 p-5">{record.food.map((food, index) => <Paper key={food.id ?? index} variant="outlined" sx={{ p: 2 }}><div className="grid gap-3 sm:grid-cols-4"><div><Typography color="text.secondary" variant="caption">Alimento</Typography><Typography>{food.foodName}</Typography></div><div><Typography color="text.secondary" variant="caption">Calorías</Typography><Typography>{food.calories}</Typography></div><div><Typography color="text.secondary" variant="caption">Cantidad</Typography><Typography>{food.quantity}</Typography></div><div><Typography color="text.secondary" variant="caption">Unidad</Typography><Typography>{food.unitMeasurement}</Typography></div></div></Paper>)}</div>{record.notes && <><Divider /><div className="p-5"><Typography color="text.secondary" variant="body2">Notas</Typography><Typography sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>{record.notes}</Typography></div></>}</Paper>}
   </FormPageLayout>
 }

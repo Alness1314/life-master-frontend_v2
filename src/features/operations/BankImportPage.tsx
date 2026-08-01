@@ -23,6 +23,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiClient, getApiErrorMessage } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
 import { useFeedback } from '../../components/feedback/useFeedback'
+import { useModulePermission } from '../modules/api'
 import { FormCard } from '../../components/form/FormCard'
 import { FieldLabel } from '../../components/form/FieldLabel'
 import { FormPageLayout } from '../../components/form/FormPageLayout'
@@ -74,6 +75,7 @@ function formatMoney(amount: number, currency: string) {
 export function BankImportPage() {
   const { user } = useAuth()
   const { showError, showSuccess, showWarning } = useFeedback()
+  const access = useModulePermission('bank-import')
   const currencies = useCurrencies()
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState('')
@@ -308,7 +310,10 @@ export function BankImportPage() {
       description="Valida estados de cuenta CSV o Excel antes de crear ingresos y gastos."
       title="Importación bancaria"
     >
-      <FormCard onSubmit={(event) => { event.preventDefault(); importMutation.mutate(true) }}>
+      <FormCard onSubmit={(event) => {
+        event.preventDefault()
+        if (access.canCreate) importMutation.mutate(true)
+      }}>
         <Paper
           className="mb-6 flex flex-col items-center justify-center gap-3 border-dashed px-5 py-8 text-center"
           elevation={0}
@@ -412,7 +417,7 @@ export function BankImportPage() {
                 Plantilla Excel
               </Button>
           </div>
-          <div className="flex flex-wrap justify-end gap-3">
+          {access.canCreate && <div className="flex flex-wrap justify-end gap-3">
             <Button
               disabled={!file || importMutation.isPending}
               startIcon={<MaterialSymbol name="preview" />}
@@ -429,7 +434,7 @@ export function BankImportPage() {
             >
               Confirmar importación
             </Button>
-          </div>
+          </div>}
         </div>
       </FormCard>
 

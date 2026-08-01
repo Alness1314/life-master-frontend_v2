@@ -18,6 +18,7 @@ import type { DataTableColumn } from '../../../components/table/DynamicDataTable
 import { TEXTS } from '../../../config/texts'
 import { deleteUser, useUsers } from '../api'
 import type { CurrentUser } from '../api'
+import { useModulePermission } from '../../modules/api'
 
 const dateFormatter = new Intl.DateTimeFormat('es-MX', {
   day: '2-digit',
@@ -45,6 +46,7 @@ export function UsersPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('users')
   const { data: users = [], isLoading, error } = useUsers()
   const [userToDelete, setUserToDelete] = useState<CurrentUser | null>(null)
 
@@ -133,7 +135,7 @@ export function UsersPage() {
       minWidth: 150,
       render: (user) => (
         <Stack direction="row" spacing={1} sx={{ justifyContent: 'center' }}>
-          <Tooltip title="Ver detalle">
+          {access.canRead && <Tooltip title="Ver detalle">
             <IconButton
               onClick={() => navigate(`/users/details/${user.id}`)}
               size="small"
@@ -141,8 +143,8 @@ export function UsersPage() {
             >
               <MaterialSymbol name="visibility" size={20} />
             </IconButton>
-          </Tooltip>
-          <Tooltip title="Editar">
+          </Tooltip>}
+          {access.canUpdate && <Tooltip title="Editar">
             <IconButton
               onClick={() => navigate(`/users/update/${user.id}`)}
               size="small"
@@ -150,8 +152,8 @@ export function UsersPage() {
             >
               <MaterialSymbol name="edit" size={20} />
             </IconButton>
-          </Tooltip>
-          <Tooltip title="Eliminar">
+          </Tooltip>}
+          {access.canDelete && <Tooltip title="Eliminar">
             <IconButton
               onClick={() => setUserToDelete(user)}
               size="small"
@@ -159,15 +161,15 @@ export function UsersPage() {
             >
               <MaterialSymbol name="delete" size={20} />
             </IconButton>
-          </Tooltip>
+          </Tooltip>}
         </Stack>
       ),
     },
-  ], [navigate])
+  ], [access.canDelete, access.canRead, access.canUpdate, navigate])
 
   return (
     <ModulePageLayout
-      actions={(
+      actions={access.canCreate ? (
         <Button
           onClick={() => navigate('/users/register')}
           startIcon={<MaterialSymbol name="add" size={20} />}
@@ -175,7 +177,7 @@ export function UsersPage() {
         >
           {TEXTS.users.register}
         </Button>
-      )}
+      ) : undefined}
       description={TEXTS.users.description}
       title={TEXTS.users.title}
     >

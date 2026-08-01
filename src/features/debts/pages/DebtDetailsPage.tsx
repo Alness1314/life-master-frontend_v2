@@ -7,6 +7,7 @@ import { FormPageLayout } from '../../../components/form/FormPageLayout'
 import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { API_ROUTES } from '../../../config/apiRoutes'
 import type { Debt } from '../types'
+import { useModulePermission } from '../../modules/api'
 
 const money = (value: number, currency: string) => new Intl.NumberFormat('es-MX', { style: 'currency', currency }).format(value)
 
@@ -14,6 +15,7 @@ export function DebtDetailsPage() {
   const navigate = useNavigate()
   const { debtId } = useParams()
   const { user } = useAuth()
+  const access = useModulePermission('debts')
   const query = useQuery({ queryKey: ['debts', user?.id, debtId], queryFn: async () => (await apiClient.get<Debt>(API_ROUTES.debts.byId(user!.id, debtId!))).data, enabled: Boolean(user && debtId) })
   const debt = query.data
   return <FormPageLayout title="Detalle de deuda" description="Consulta el saldo y el historial de pagos de la deuda."
@@ -22,7 +24,7 @@ export function DebtDetailsPage() {
     {query.isLoading && <div className="grid min-h-64 place-items-center"><CircularProgress /></div>}
     {query.error && <Alert severity="error">No fue posible cargar la deuda.</Alert>}
     {debt && <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-      <div className="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-7"><div className="flex items-center gap-4"><MaterialSymbol name="account_balance_wallet" size={40} style={{ color: '#7567e8' }} /><div><Typography variant="h5">{debt.creditorName}</Typography><Chip color={debt.isFullyPaid ? 'success' : 'warning'} label={debt.isFullyPaid ? 'Pagada' : 'Pendiente'} size="small" variant="outlined" /></div></div><Button onClick={() => navigate(`/debts/update/${debt.id}`)} startIcon={<MaterialSymbol name="edit" size={20} />} variant="contained">Editar</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-7"><div className="flex items-center gap-4"><MaterialSymbol name="account_balance_wallet" size={40} style={{ color: '#7567e8' }} /><div><Typography variant="h5">{debt.creditorName}</Typography><Chip color={debt.isFullyPaid ? 'success' : 'warning'} label={debt.isFullyPaid ? 'Pagada' : 'Pendiente'} size="small" variant="outlined" /></div></div>{access.canUpdate && <Button onClick={() => navigate(`/debts/update/${debt.id}`)} startIcon={<MaterialSymbol name="edit" size={20} />} variant="contained">Editar</Button>}</div>
       <Divider />
       <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-7 xl:grid-cols-4">
         {[['Monto total', money(debt.totalAmount, debt.currency)], ['Capital pagado', money(debt.paidAmount, debt.currency)], ['Saldo pendiente', money(debt.outstandingAmount, debt.currency)], ['Vencimiento', debt.dueDate], ['Número de pagos', debt.numberOfPayments], ['Pagos realizados', debt.paymentsMade], ['Entregó dinero', debt.disbursesFunds ? 'Sí' : 'No'], ['Monto recibido', debt.disbursesFunds ? money(Number(debt.receivedAmount), debt.currency) : 'No aplica'], ['Fecha del depósito', debt.receivedDate || 'No aplica'], ['Intereses', debt.hasInterest ? 'Sí' : 'No'], ['Notas', debt.notes || 'Sin información']].map(([label, value]) => <div key={String(label)}><Typography color="text.secondary" variant="body2">{label}</Typography><Typography sx={{ mt: .5 }}>{value}</Typography></div>)}

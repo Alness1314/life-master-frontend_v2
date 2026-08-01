@@ -11,6 +11,7 @@ import { FormPageLayout } from '../../../components/form/FormPageLayout'
 import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { API_ROUTES } from '../../../config/apiRoutes'
 import { useExpense } from '../api'
+import { useModulePermission } from '../../modules/api'
 
 function Detail({ icon, label, children }: { icon: string; label: string; children: ReactNode }) {
   return (
@@ -38,6 +39,7 @@ export function ExpenseDetailsPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('expenses')
   const { expenseId } = useParams()
   const [receiptToDelete, setReceiptToDelete] = useState<ExpenseReceipt | null>(null)
   const { data: expense, isLoading, error } = useExpense(user?.id, expenseId)
@@ -124,14 +126,14 @@ export function ExpenseDetailsPage() {
                 color={expense.paymentStatus ? 'success' : 'warning'}
                 label={expense.paymentStatus ? 'Pagado' : 'Pendiente'}
               />
-              <Button
+              {access.canUpdate && <Button
                 aria-label={`Editar gasto ${expense.description}`}
                 onClick={() => navigate(`/expenses/update/${expense.id}`)}
                 startIcon={<MaterialSymbol name="edit" size={20} />}
                 variant="contained"
               >
                 Editar gasto
-              </Button>
+              </Button>}
             </div>
           </div>
           <Divider />
@@ -168,7 +170,7 @@ export function ExpenseDetailsPage() {
               <Typography variant="h6">Comprobantes</Typography>
               <Typography color="text.secondary">Archivos PDF, PNG o JPEG de hasta 10 MB.</Typography>
             </div>
-            <Button
+            {access.canCreate && <Button
               component="label"
               disabled={uploadMutation.isPending}
               startIcon={<MaterialSymbol name="attach_file" />}
@@ -176,7 +178,7 @@ export function ExpenseDetailsPage() {
             >
               Adjuntar comprobante
               <input accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden onChange={uploadReceipt} type="file" />
-            </Button>
+            </Button>}
           </div>
           {uploadMutation.error && <Alert className="mt-4" severity="error">{getApiErrorMessage(uploadMutation.error)}</Alert>}
           <div className="mt-4 grid gap-2">
@@ -192,8 +194,8 @@ export function ExpenseDetailsPage() {
                   </div>
                 </div>
                 <div>
-                  <Button onClick={() => downloadReceipt(receipt)} startIcon={<MaterialSymbol name="download" />}>Descargar</Button>
-                  <Button color="error" onClick={() => setReceiptToDelete(receipt)} startIcon={<MaterialSymbol name="delete" />}>Eliminar</Button>
+                  {access.canRead && <Button onClick={() => downloadReceipt(receipt)} startIcon={<MaterialSymbol name="download" />}>Descargar</Button>}
+                  {access.canDelete && <Button color="error" onClick={() => setReceiptToDelete(receipt)} startIcon={<MaterialSymbol name="delete" />}>Eliminar</Button>}
                 </div>
               </div>
             ))}

@@ -13,6 +13,7 @@ import type { DataTableColumn } from '../../../components/table/DynamicDataTable
 import { TableRowActions } from '../../../components/table/TableRowActions'
 import { deleteExpense, useExpenses } from '../api'
 import type { Expense } from '../api'
+import { useModulePermission } from '../../modules/api'
 
 const dateFormatter = new Intl.DateTimeFormat('es-MX', {
   day: '2-digit',
@@ -32,6 +33,7 @@ export function ExpensesPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('expenses')
   const { data: expenses = [], isLoading, error } = useExpenses(user?.id)
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null)
 
@@ -120,17 +122,17 @@ export function ExpensesPage() {
       minWidth: 150,
       render: (expense) => (
         <TableRowActions
-          onDelete={() => setExpenseToDelete(expense)}
-          onEdit={() => navigate(`/expenses/update/${expense.id}`)}
-          onView={() => navigate(`/expenses/details/${expense.id}`)}
+          onDelete={access.canDelete ? () => setExpenseToDelete(expense) : undefined}
+          onEdit={access.canUpdate ? () => navigate(`/expenses/update/${expense.id}`) : undefined}
+          onView={access.canRead ? () => navigate(`/expenses/details/${expense.id}`) : undefined}
         />
       ),
     },
-  ], [navigate])
+  ], [access.canDelete, access.canRead, access.canUpdate, navigate])
 
   return (
     <ModulePageLayout
-      actions={(
+      actions={access.canCreate ? (
         <Button
           onClick={() => navigate('/expenses/register')}
           startIcon={<MaterialSymbol name="add" size={20} />}
@@ -138,7 +140,7 @@ export function ExpensesPage() {
         >
           Registrar gasto
         </Button>
-      )}
+      ) : undefined}
       ancestors={[{ label: 'Catálogos', to: '/catalogs' }]}
       description="Administra y consulta tus gastos."
       title="Gastos"

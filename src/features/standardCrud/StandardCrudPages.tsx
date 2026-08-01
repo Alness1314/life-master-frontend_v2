@@ -20,21 +20,22 @@ import { DynamicDataTable } from '../../components/table/DynamicDataTable'
 import type { DataTableColumn } from '../../components/table/DynamicDataTable'
 import { TableRowActions } from '../../components/table/TableRowActions'
 import { toCurrencySelectOptions, useCurrencies } from '../../hooks/useCurrencies'
+import { useModulePermission } from '../modules/api'
 import type { CrudField, CrudFormValues, CrudModuleConfig, CrudRecord } from './types'
 
-function useRecords(config: CrudModuleConfig, userId?: string) {
+function useRecords(config: CrudModuleConfig, userId?: string, allowed = true) {
   return useQuery({
     queryKey: [config.key, userId],
     queryFn: async () => (await apiClient.get<CrudRecord[]>(config.endpoint(userId!))).data,
-    enabled: Boolean(userId),
+    enabled: Boolean(userId && allowed),
   })
 }
 
-function useRecord(config: CrudModuleConfig, userId?: string, id?: string) {
+function useRecord(config: CrudModuleConfig, userId?: string, id?: string, allowed = true) {
   return useQuery({
     queryKey: [config.key, userId, id],
     queryFn: async () => (await apiClient.get<CrudRecord>(config.endpointById(userId!, id!))).data,
-    enabled: Boolean(userId && id),
+    enabled: Boolean(userId && id && allowed),
   })
 }
 
@@ -107,7 +108,8 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showError, showSuccess } = useFeedback()
-  const recordsQuery = useRecords(config, user?.id)
+  const access = useModulePermission(config.permissionKey ?? config.key)
+  const recordsQuery = useRecords(config, user?.id, access.canRead)
   const [recordToDelete, setRecordToDelete] = useState<CrudRecord | null>(null)
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(config.endpointById(user!.id, id)),
@@ -151,19 +153,28 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
       minWidth: 150,
       render: (record: CrudRecord) => (
         <TableRowActions
-          onDelete={() => setRecordToDelete(record)}
-          onEdit={() => navigate(`${config.basePath}/update/${record.id}`)}
-          onView={() => navigate(`${config.basePath}/details/${record.id}`)}
+          onDelete={access.canDelete ? () => setRecordToDelete(record) : undefined}
+          onEdit={access.canUpdate ? () => navigate(`${config.basePath}/update/${record.id}`) : undefined}
+          onView={access.canRead ? () => navigate(`${config.basePath}/details/${record.id}`) : undefined}
         />
       ),
     },
-  ], [config, navigate])
+  ], [access.canDelete, access.canRead, access.canUpdate, config, navigate])
 
   return (
     <ModulePageLayout
       actions={(
         <div className="flex flex-wrap justify-end gap-3">
-          {config.listAction && (
+          {config.permissionsPath && access.canUpdate && (
+            <Button
+              onClick={() => navigate(config.permissionsPath!)}
+              startIcon={<MaterialSymbol name="admin_panel_settings" size={20} />}
+              variant="outlined"
+            >
+              Configurar permisos
+            </Button>
+          )}
+          {config.listAction && access.canCreate && (
             <Button
               disabled={listActionMutation.isPending}
               onClick={() => listActionMutation.mutate()}
@@ -175,24 +186,30 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
               {config.listAction.label}
             </Button>
           )}
-          <Button onClick={() => navigate(`${config.basePath}/register`)}
-            startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">
-            Registrar {config.singular.toLowerCase()}
-          </Button>
+          {access.canCreate && (
+            <Button onClick={() => navigate(`${config.basePath}/register`)}
+              startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">
+              Registrar {config.singular.toLowerCase()}
+            </Button>
+          )}
         </div>
       )}
       ancestors={[config.section]}
       description={config.description}
       title={config.plural}
     >
-      <DynamicDataTable
-        columns={columns}
-        data={recordsQuery.data ?? []}
-        emptyMessage={`No hay ${config.plural.toLowerCase()} registrados.`}
-        error={recordsQuery.error ? `No fue posible cargar ${config.plural.toLowerCase()}.` : null}
-        getRowId={(record) => record.id}
-        loading={recordsQuery.isLoading}
-      />
+      {!access.isLoading && !access.canRead ? (
+        <Alert severity="error">No tienes permiso para consultar este módulo.</Alert>
+      ) : (
+        <DynamicDataTable
+          columns={columns}
+          data={recordsQuery.data ?? []}
+          emptyMessage={`No hay ${config.plural.toLowerCase()} registrados.`}
+          error={recordsQuery.error ? `No fue posible cargar ${config.plural.toLowerCase()}.` : null}
+          getRowId={(record) => record.id}
+          loading={access.isLoading || recordsQuery.isLoading}
+        />
+      )}
       <ConfirmDialog
         confirmLabel="Sí, eliminar"
         error={deleteMutation.error ? getApiErrorMessage(deleteMutation.error) : null}
@@ -349,8 +366,10 @@ export function StandardCrudEditorPage({ config, mode }: {
   const { recordId } = useParams()
   const { user } = useAuth()
   const { showError, showSuccess } = useFeedback()
+  const access = useModulePermission(config.permissionKey ?? config.key)
   const isUpdate = mode === 'update'
-  const recordQuery = useRecord(config, user?.id, isUpdate ? recordId : undefined)
+  const allowed = isUpdate ? access.canUpdate : access.canCreate
+  const recordQuery = useRecord(config, user?.id, isUpdate ? recordId : undefined, allowed)
   const mutation = useMutation({
     mutationFn: async (values: CrudFormValues) => {
       const payload = config.normalizeRequest?.(values) ?? values
@@ -377,9 +396,12 @@ export function StandardCrudEditorPage({ config, mode }: {
       ]}
       title={isUpdate ? `Editar ${config.singular.toLowerCase()}` : `Registro de ${config.singular.toLowerCase()}`}
     >
-      {recordQuery.isLoading && <div className="grid min-h-64 place-items-center"><CircularProgress /></div>}
+      {!access.isLoading && !allowed && (
+        <Alert severity="error">No tienes permiso para realizar esta operación.</Alert>
+      )}
+      {(access.isLoading || recordQuery.isLoading) && <div className="grid min-h-64 place-items-center"><CircularProgress /></div>}
       {recordQuery.error && <Alert severity="error">No fue posible cargar la información.</Alert>}
-      {(!isUpdate || recordQuery.data) && (
+      {allowed && (!isUpdate || recordQuery.data) && (
         <CrudForm config={config} onSubmit={(values) => mutation.mutate(values)}
           pending={mutation.isPending} record={recordQuery.data} serverError={mutation.error} />
       )}
@@ -391,7 +413,8 @@ export function StandardCrudDetailsPage({ config }: { config: CrudModuleConfig }
   const navigate = useNavigate()
   const { recordId } = useParams()
   const { user } = useAuth()
-  const recordQuery = useRecord(config, user?.id, recordId)
+  const access = useModulePermission(config.permissionKey ?? config.key)
+  const recordQuery = useRecord(config, user?.id, recordId, access.canRead)
   const record = recordQuery.data
 
   return (
@@ -403,7 +426,10 @@ export function StandardCrudDetailsPage({ config }: { config: CrudModuleConfig }
         { label: config.plural, to: config.basePath },
       ]}
       title={`Detalle de ${config.singular.toLowerCase()}`}>
-      {recordQuery.isLoading && <div className="grid min-h-64 place-items-center"><CircularProgress /></div>}
+      {!access.isLoading && !access.canRead && (
+        <Alert severity="error">No tienes permiso para consultar este módulo.</Alert>
+      )}
+      {(access.isLoading || recordQuery.isLoading) && <div className="grid min-h-64 place-items-center"><CircularProgress /></div>}
       {recordQuery.error && <Alert severity="error">No fue posible cargar la información.</Alert>}
       {record && (
         <Paper
@@ -419,8 +445,10 @@ export function StandardCrudDetailsPage({ config }: { config: CrudModuleConfig }
               <MaterialSymbol name={config.icon} size={40} style={{ color: '#7567e8' }} />
               <Typography variant="h5">{String(record[config.primaryField] ?? config.singular)}</Typography>
             </div>
-            <Button onClick={() => navigate(`${config.basePath}/update/${record.id}`)}
-              startIcon={<MaterialSymbol name="edit" size={20} />} variant="contained">Editar</Button>
+            {access.canUpdate && (
+              <Button onClick={() => navigate(`${config.basePath}/update/${record.id}`)}
+                startIcon={<MaterialSymbol name="edit" size={20} />} variant="contained">Editar</Button>
+            )}
           </div>
           <Divider />
           <div

@@ -13,6 +13,7 @@ import type { DataTableColumn } from '../../../components/table/DynamicDataTable
 import { TableRowActions } from '../../../components/table/TableRowActions'
 import { API_ROUTES } from '../../../config/apiRoutes'
 import type { Debt } from '../types'
+import { useModulePermission } from '../../modules/api'
 
 const money = (value: number, currency = 'MXN') =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency }).format(value)
@@ -22,6 +23,7 @@ export function DebtsPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { showSuccess } = useFeedback()
+  const access = useModulePermission('debts')
   const [selected, setSelected] = useState<Debt | null>(null)
   const query = useQuery({
     queryKey: ['debts', user?.id],
@@ -49,12 +51,16 @@ export function DebtsPage() {
     { id: 'status', header: 'Estado', align: 'center', minWidth: 110, render: (row) => <Chip color={row.isFullyPaid ? 'success' : 'warning'} label={row.isFullyPaid ? 'Pagada' : 'Pendiente'} size="small" variant="outlined" /> },
     {
       id: 'actions', header: 'Acciones', align: 'center', minWidth: 150,
-      render: (row) => <TableRowActions onDelete={() => setSelected(row)} onEdit={() => navigate(`/debts/update/${row.id}`)} onView={() => navigate(`/debts/details/${row.id}`)} />,
+      render: (row) => <TableRowActions
+        onDelete={access.canDelete ? () => setSelected(row) : undefined}
+        onEdit={access.canUpdate ? () => navigate(`/debts/update/${row.id}`) : undefined}
+        onView={access.canRead ? () => navigate(`/debts/details/${row.id}`) : undefined}
+      />,
     },
-  ], [navigate])
+  ], [access.canDelete, access.canRead, access.canUpdate, navigate])
 
   return <ModulePageLayout
-    actions={<Button onClick={() => navigate('/debts/register')} startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">Registrar deuda</Button>}
+    actions={access.canCreate ? <Button onClick={() => navigate('/debts/register')} startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">Registrar deuda</Button> : undefined}
     ancestors={[{ label: 'Catálogos', to: '/catalogs' }]}
     description="Administra tus deudas, pagos y saldos pendientes."
     title="Deudas"

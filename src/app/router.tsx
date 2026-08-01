@@ -45,6 +45,7 @@ import { UserRegisterPage } from '../features/users/pages/UserRegisterPage'
 import { UsersPage } from '../features/users/pages/UsersPage'
 import { UserUpdatePage } from '../features/users/pages/UserUpdatePage'
 import { MainLayout } from '../layouts/MainLayout'
+import { ModulePermissionsPage } from '../features/permissions/pages/ModulePermissionsPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -118,6 +119,7 @@ export const router = createBrowserRouter([
           { path: '/app-modules/register', element: <StandardCrudEditorPage config={moduleConfig} mode="create" /> },
           { path: '/app-modules/details/:recordId', element: <StandardCrudDetailsPage config={moduleConfig} /> },
           { path: '/app-modules/update/:recordId', element: <StandardCrudEditorPage config={moduleConfig} mode="update" /> },
+          { path: '/app-modules/permissions', element: <ModulePermissionsPage /> },
           { path: '/global-variables', element: <ModulePendingPage title="Variables globales" /> },
           { path: '/', element: <Navigate to="/dashboard" replace /> },
         ],

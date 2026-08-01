@@ -30,6 +30,7 @@ import { useCurrentUser } from '../features/users/api'
 import { apiClient } from '../api/client'
 import { API_ROUTES } from '../config/apiRoutes'
 import { blobToDataUrl } from '../features/users/profileImage'
+import { ModuleAccessBoundary } from '../features/modules/ModuleAccessBoundary'
 
 const drawerWidth = 278
 
@@ -247,7 +248,9 @@ export function MainLayout() {
       >
         <Toolbar sx={{ minHeight: '72px !important' }} />
         <div className="mx-auto min-h-0 w-full max-w-[1800px] flex-1 overflow-hidden px-3 py-5 sm:px-4 sm:py-7">
-          <Outlet />
+          <ModuleAccessBoundary>
+            <Outlet />
+          </ModuleAccessBoundary>
         </div>
       </Box>
     </Box>

@@ -18,6 +18,7 @@ import { UserAvatar } from '../components/UserAvatar'
 import { apiClient } from '../../../api/client'
 import { API_ROUTES } from '../../../config/apiRoutes'
 import { blobToDataUrl } from '../profileImage'
+import { useModulePermission } from '../../modules/api'
 
 const dateTimeFormatter = new Intl.DateTimeFormat('es-MX', {
   dateStyle: 'long',
@@ -59,6 +60,7 @@ export function UserDetailsPage() {
   const navigate = useNavigate()
   const { userId } = useParams()
   const { data: user, isLoading, error } = useUser(userId)
+  const access = useModulePermission('users')
   const imageQuery = useQuery({
     queryKey: ['user-image', userId, user?.imageId],
     queryFn: async () => blobToDataUrl((
@@ -127,7 +129,7 @@ export function UserDetailsPage() {
                 />
               </div>
             </div>
-            <Button
+            {access.canUpdate && <Button
               aria-label={`Editar usuario ${user.fullName}`}
               onClick={() => navigate(`/users/update/${user.id}`)}
               startIcon={<MaterialSymbol name="edit" size={20} />}
@@ -135,7 +137,7 @@ export function UserDetailsPage() {
               variant="contained"
             >
               Editar usuario
-            </Button>
+            </Button>}
           </div>
 
           <Divider />

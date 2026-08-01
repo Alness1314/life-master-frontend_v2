@@ -118,6 +118,7 @@ const yesNoOptions = [
 
 export const assistanceConfig: CrudModuleConfig = {
   key: 'assistance',
+  permissionKey: 'asistencia',
   singular: 'Asistencia',
   plural: 'Asistencias',
   basePath: '/asistencia',
@@ -594,6 +595,7 @@ export const moduleConfig: CrudModuleConfig = {
   endpointById: (_, id) => API_ROUTES.modules.byId(id),
   primaryField: 'name',
   icon: 'widgets',
+  permissionsPath: '/app-modules/permissions',
   dynamicOptions: {
     fieldName: 'profile',
     endpoint: API_ROUTES.profiles.root,
@@ -601,6 +603,12 @@ export const moduleConfig: CrudModuleConfig = {
   fields: [
     { name: 'name', label: 'Nombre', required: true, maxLength: 128, table: true },
     { name: 'route', label: 'Ruta', required: true, maxLength: 256, table: true },
+    {
+      name: 'permissionKey',
+      label: 'Clave de permisos',
+      maxLength: 64,
+      table: true,
+    },
     { name: 'iconName', label: 'Nombre del icono', maxLength: 128, table: true },
     {
       name: 'level',
@@ -645,6 +653,7 @@ export const moduleConfig: CrudModuleConfig = {
   toFormValues: (record) => ({
     name: String(record.name ?? ''),
     route: String(record.route ?? ''),
+    permissionKey: String(record.permissionKey ?? ''),
     iconName: String(record.iconName ?? ''),
     level: String(record.level ?? ''),
     isParent: String(record.isParent ?? false),
