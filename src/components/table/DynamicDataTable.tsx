@@ -3,7 +3,9 @@ import type { ReactNode } from 'react'
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -13,12 +15,27 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
+  TextField,
   Typography,
 } from '@mui/material'
 import { TEXTS } from '../../config/texts'
+import { MaterialSymbol } from '../icons/MaterialSymbol'
 
 type SortDirection = 'asc' | 'desc'
 type SortValue = string | number | boolean | Date | null | undefined
+
+export type DataTableFilterInput = 'text' | 'number' | 'date' | 'time' | 'select'
+
+export interface DataTableFilter {
+  field: string
+  value: string
+}
+
+export interface DataTableColumnFilter {
+  inputType?: DataTableFilterInput
+  options?: { label: string; value: string }[]
+  param?: string
+}
 
 export interface DataTableColumn<T> {
   id: string
@@ -28,6 +45,7 @@ export interface DataTableColumn<T> {
   align?: 'left' | 'center' | 'right'
   minWidth?: number
   width?: number
+  filter?: DataTableColumnFilter | false
 }
 
 interface DynamicDataTableProps<T> {
@@ -39,6 +57,7 @@ interface DynamicDataTableProps<T> {
   emptyMessage?: string
   initialPageSize?: number
   pageSizeOptions?: number[]
+  onFilterApply?: (filter: DataTableFilter | null) => void
 }
 
 function compareValues(left: SortValue, right: SortValue) {
@@ -60,20 +79,48 @@ export function DynamicDataTable<T>({
   emptyMessage = TEXTS.common.empty,
   initialPageSize = 5,
   pageSizeOptions = [5, 10, 25],
+  onFilterApply,
 }: DynamicDataTableProps<T>) {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(initialPageSize)
   const [sortColumnId, setSortColumnId] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const filterableColumns = useMemo(() => columns.filter((column) => (
+    column.sortValue && column.filter !== false
+  )), [columns])
+  const [filterColumnId, setFilterColumnId] = useState('')
+  const [filterValue, setFilterValue] = useState('')
+  const [appliedFilter, setAppliedFilter] = useState<DataTableFilter | null>(null)
+
+  const selectedFilterColumn = filterableColumns.find((column) => column.id === filterColumnId)
+  const selectedFilterConfig = selectedFilterColumn?.filter || { inputType: 'text' as const }
+
+  const filteredData = useMemo(() => {
+    if (!appliedFilter) return data
+    const filterColumn = columns.find((column) => (
+      (column.filter ? column.filter.param : column.id) === appliedFilter.field
+    ))
+    if (!filterColumn?.sortValue) return data
+    const inputType = filterColumn.filter
+      ? filterColumn.filter.inputType ?? 'text'
+      : 'text'
+    const expected = appliedFilter.value.toLocaleLowerCase('es')
+    return data.filter((row) => {
+      const rawValue = filterColumn.sortValue!(row)
+      if (rawValue == null) return false
+      const actual = String(rawValue).toLocaleLowerCase('es')
+      return inputType === 'text' ? actual.includes(expected) : actual === expected
+    })
+  }, [appliedFilter, columns, data])
 
   const sortedData = useMemo(() => {
     const sortColumn = columns.find((column) => column.id === sortColumnId)
-    if (!sortColumn?.sortValue) return data
+    if (!sortColumn?.sortValue) return filteredData
     const direction = sortDirection === 'asc' ? 1 : -1
-    return [...data].sort((left, right) => (
+    return [...filteredData].sort((left, right) => (
       compareValues(sortColumn.sortValue!(left), sortColumn.sortValue!(right)) * direction
     ))
-  }, [columns, data, sortColumnId, sortDirection])
+  }, [columns, filteredData, sortColumnId, sortDirection])
 
   const visibleRows = useMemo(() => {
     const firstRow = page * pageSize
@@ -91,10 +138,104 @@ export function DynamicDataTable<T>({
     setPage(0)
   }
 
+  const applyFilter = () => {
+    if (!selectedFilterColumn || !filterValue.trim()) {
+      setAppliedFilter(null)
+      onFilterApply?.(null)
+      setPage(0)
+      return
+    }
+    const filter = {
+      field: selectedFilterConfig.param ?? selectedFilterColumn.id,
+      value: filterValue.trim(),
+    }
+    setAppliedFilter(filter)
+    onFilterApply?.(filter)
+    setPage(0)
+  }
+
+  const clearFilter = () => {
+    setFilterColumnId('')
+    setFilterValue('')
+    setAppliedFilter(null)
+    onFilterApply?.(null)
+    setPage(0)
+  }
+
   if (error) return <Alert severity="error">{error}</Alert>
 
   return (
     <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+      {filterableColumns.length > 0 && (
+        <Box
+          component="form"
+          onSubmit={(event) => { event.preventDefault(); applyFilter() }}
+          sx={{
+            alignItems: { sm: 'center' },
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 1.5,
+            p: 2,
+          }}
+        >
+          <TextField
+            label="Filtrar por"
+            onChange={(event) => {
+              setFilterColumnId(event.target.value)
+              setFilterValue('')
+            }}
+            select
+            size="small"
+            sx={{ minWidth: { sm: 220 }, width: { xs: '100%', sm: 'auto' } }}
+            value={filterColumnId}
+          >
+            <MenuItem value=""><em>Selecciona un campo</em></MenuItem>
+            {filterableColumns.map((column) => (
+              <MenuItem key={column.id} value={column.id}>{column.header}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            disabled={!selectedFilterColumn}
+            fullWidth
+            label="Valor a buscar"
+            onChange={(event) => setFilterValue(event.target.value)}
+            select={selectedFilterConfig.inputType === 'select'}
+            size="small"
+            type={selectedFilterConfig.inputType === 'select'
+              ? 'text'
+              : selectedFilterConfig.inputType ?? 'text'}
+            value={filterValue}
+          >
+            {selectedFilterConfig.inputType === 'select' && (
+              selectedFilterConfig.options ?? []
+            ).map((option) => (
+              <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+            ))}
+          </TextField>
+          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+            <Button
+              disabled={!selectedFilterColumn || !filterValue.trim() || loading}
+              startIcon={<MaterialSymbol name="search" size={19} />}
+              sx={{ flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap' }}
+              type="submit"
+              variant="contained"
+            >
+              Buscar
+            </Button>
+            <Button
+              disabled={!appliedFilter && !filterColumnId}
+              onClick={clearFilter}
+              sx={{ flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap' }}
+              type="button"
+              variant="outlined"
+            >
+              Limpiar
+            </Button>
+          </Box>
+        </Box>
+      )}
       <TableContainer sx={{ maxWidth: '100%' }}>
         <Table aria-label="Tabla de datos" sx={{ minWidth: 1180 }}>
           <TableHead>
@@ -159,7 +300,7 @@ export function DynamicDataTable<T>({
         </Table>
       </TableContainer>
 
-      {!loading && data.length > 0 && (
+      {!loading && sortedData.length > 0 && (
         <TablePagination
           component="div"
           count={sortedData.length}

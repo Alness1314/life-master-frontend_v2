@@ -333,6 +333,7 @@ export const financialAccountConfig: CrudModuleConfig = {
       type: 'number',
       form: false,
       table: true,
+      filterable: false,
       format: formatAccountMoney,
     },
     {

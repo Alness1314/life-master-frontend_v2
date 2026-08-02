@@ -19,6 +19,8 @@ export interface CrudField {
   sensitive?: boolean
   defaultValue?: string | (() => string)
   format?: (value: unknown, record: CrudRecord) => ReactNode
+  filterable?: boolean
+  filterParam?: string
 }
 
 export interface CrudDynamicOptions {

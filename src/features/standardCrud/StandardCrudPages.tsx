@@ -17,18 +17,31 @@ import { FormPageLayout } from '../../components/form/FormPageLayout'
 import { MaterialSymbol } from '../../components/icons/MaterialSymbol'
 import { ModulePageLayout } from '../../components/layout/ModulePageLayout'
 import { DynamicDataTable } from '../../components/table/DynamicDataTable'
-import type { DataTableColumn } from '../../components/table/DynamicDataTable'
+import type { DataTableColumn, DataTableFilter, DataTableFilterInput } from '../../components/table/DynamicDataTable'
 import { TableRowActions } from '../../components/table/TableRowActions'
 import { toCurrencySelectOptions, useCurrencies } from '../../hooks/useCurrencies'
 import { useModulePermission } from '../modules/api'
 import type { CrudField, CrudFormValues, CrudModuleConfig, CrudRecord } from './types'
 
-function useRecords(config: CrudModuleConfig, userId?: string, allowed = true) {
+function useRecords(
+  config: CrudModuleConfig,
+  userId?: string,
+  allowed = true,
+  filter: DataTableFilter | null = null,
+) {
   return useQuery({
-    queryKey: [config.key, userId],
-    queryFn: async () => (await apiClient.get<CrudRecord[]>(config.endpoint(userId!))).data,
+    queryKey: [config.key, userId, filter?.field, filter?.value],
+    queryFn: async () => (await apiClient.get<CrudRecord[]>(config.endpoint(userId!), {
+      params: filter ? { [filter.field]: filter.value } : undefined,
+    })).data,
     enabled: Boolean(userId && allowed),
   })
+}
+
+function toFilterInput(field: CrudField): DataTableFilterInput {
+  if (field.type === 'select' && field.options?.length) return 'select'
+  if (field.type === 'number' || field.type === 'date' || field.type === 'time') return field.type
+  return 'text'
 }
 
 function useRecord(config: CrudModuleConfig, userId?: string, id?: string, allowed = true) {
@@ -109,7 +122,8 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
   const { user } = useAuth()
   const { showError, showSuccess } = useFeedback()
   const access = useModulePermission(config.permissionKey ?? config.key)
-  const recordsQuery = useRecords(config, user?.id, access.canRead)
+  const [serverFilter, setServerFilter] = useState<DataTableFilter | null>(null)
+  const recordsQuery = useRecords(config, user?.id, access.canRead, serverFilter)
   const [recordToDelete, setRecordToDelete] = useState<CrudRecord | null>(null)
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(config.endpointById(user!.id, id)),
@@ -144,6 +158,11 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
         return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
           ? value
           : String(value ?? '')
+      },
+      filter: field.filterable === false ? false as const : {
+        inputType: toFilterInput(field),
+        options: field.options,
+        param: field.filterParam ?? field.name,
       },
     })),
     {
@@ -202,6 +221,7 @@ export function StandardCrudListPage({ config }: { config: CrudModuleConfig }) {
           error={recordsQuery.error ? `No fue posible cargar ${config.plural.toLowerCase()}.` : null}
           getRowId={(record) => record.id}
           loading={access.isLoading || recordsQuery.isLoading}
+          onFilterApply={setServerFilter}
         />
       )}
       <ConfirmDialog
