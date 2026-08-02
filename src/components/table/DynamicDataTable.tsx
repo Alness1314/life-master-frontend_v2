@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
+  IconButton,
   MenuItem,
   Paper,
   Table,
@@ -16,6 +16,7 @@ import {
   TableRow,
   TableSortLabel,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { TEXTS } from '../../config/texts'
@@ -94,6 +95,26 @@ export function DynamicDataTable<T>({
 
   const selectedFilterColumn = filterableColumns.find((column) => column.id === filterColumnId)
   const selectedFilterConfig = selectedFilterColumn?.filter || { inputType: 'text' as const }
+  const selectedFilterInputType = selectedFilterConfig.inputType ?? 'text'
+  const selectedFilterParam = selectedFilterConfig.param ?? filterColumnId
+
+  useEffect(() => {
+    const normalizedValue = filterValue.trim()
+    const delay = selectedFilterInputType === 'select' ? 0 : 350
+    const timeout = window.setTimeout(() => {
+      const nextFilter = filterColumnId && normalizedValue
+        ? {
+            field: selectedFilterParam,
+            value: normalizedValue,
+          }
+        : null
+      setAppliedFilter(nextFilter)
+      onFilterApply?.(nextFilter)
+      setPage(0)
+    }, delay)
+
+    return () => window.clearTimeout(timeout)
+  }, [filterColumnId, filterValue, onFilterApply, selectedFilterInputType, selectedFilterParam])
 
   const filteredData = useMemo(() => {
     if (!appliedFilter) return data
@@ -138,22 +159,6 @@ export function DynamicDataTable<T>({
     setPage(0)
   }
 
-  const applyFilter = () => {
-    if (!selectedFilterColumn || !filterValue.trim()) {
-      setAppliedFilter(null)
-      onFilterApply?.(null)
-      setPage(0)
-      return
-    }
-    const filter = {
-      field: selectedFilterConfig.param ?? selectedFilterColumn.id,
-      value: filterValue.trim(),
-    }
-    setAppliedFilter(filter)
-    onFilterApply?.(filter)
-    setPage(0)
-  }
-
   const clearFilter = () => {
     setFilterColumnId('')
     setFilterValue('')
@@ -168,8 +173,6 @@ export function DynamicDataTable<T>({
     <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
       {filterableColumns.length > 0 && (
         <Box
-          component="form"
-          onSubmit={(event) => { event.preventDefault(); applyFilter() }}
           sx={{
             alignItems: { sm: 'center' },
             borderBottom: '1px solid',
@@ -214,26 +217,19 @@ export function DynamicDataTable<T>({
               <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
             ))}
           </TextField>
-          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-            <Button
-              disabled={!selectedFilterColumn || !filterValue.trim() || loading}
-              startIcon={<MaterialSymbol name="search" size={19} />}
-              sx={{ flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap' }}
-              type="submit"
-              variant="contained"
-            >
-              Buscar
-            </Button>
-            <Button
-              disabled={!appliedFilter && !filterColumnId}
-              onClick={clearFilter}
-              sx={{ flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap' }}
-              type="button"
-              variant="outlined"
-            >
-              Limpiar
-            </Button>
-          </Box>
+          <Tooltip title="Limpiar filtro">
+            <span>
+              <IconButton
+                aria-label="Limpiar filtro"
+                disabled={!appliedFilter && !filterColumnId && !filterValue}
+                onClick={clearFilter}
+                size="small"
+                sx={{ border: '1px solid', borderColor: 'divider' }}
+              >
+                <MaterialSymbol name="filter_alt_off" size={20} />
+              </IconButton>
+            </span>
+          </Tooltip>
         </Box>
       )}
       <TableContainer sx={{ maxWidth: '100%' }}>
