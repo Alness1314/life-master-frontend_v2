@@ -130,7 +130,9 @@ export function DynamicDataTable<T>({
       const rawValue = filterColumn.sortValue!(row)
       if (rawValue == null) return false
       const actual = String(rawValue).toLocaleLowerCase('es')
-      return inputType === 'text' ? actual.includes(expected) : actual === expected
+      if (inputType === 'text') return actual.includes(expected)
+      if (inputType === 'date') return actual.startsWith(expected)
+      return actual === expected
     })
   }, [appliedFilter, columns, data])
 

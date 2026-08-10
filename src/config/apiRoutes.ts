@@ -70,6 +70,8 @@ export const API_ROUTES = {
   nutrition: {
     root: (userId: string) => `/users/${userId}/nutrition`,
     byId: (userId: string, nutritionId: string) => `/users/${userId}/nutrition/${nutritionId}`,
+    photo: (userId: string, nutritionId: string) =>
+      `/users/${userId}/nutrition/${nutritionId}/photo`,
   },
   recurringMovements: {
     root: (userId: string) => `/users/${userId}/recurring-movements`,
