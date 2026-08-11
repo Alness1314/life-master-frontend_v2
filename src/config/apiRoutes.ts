@@ -118,6 +118,8 @@ export const API_ROUTES = {
     excelTemplate: (userId: string) => `/users/${userId}/bank-imports/template.xlsx`,
   },
   reports: {
+    byType: (userId: string, reportType: string) =>
+      `/users/${userId}/reports/${reportType}`,
     monthlyCsv: (userId: string, year: number, month: number, currency = 'MXN') =>
       `/users/${userId}/reports/monthly.csv?year=${year}&month=${month}&currency=${currency}`,
   },

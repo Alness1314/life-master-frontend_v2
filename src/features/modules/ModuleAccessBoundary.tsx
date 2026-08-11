@@ -29,6 +29,7 @@ const routePermissions: RoutePermission[] = [
   { pattern: /^\/alerts(?:\/|$)/, permissionKey: 'alerts' },
   { pattern: /^\/reminders(?:\/|$)/, permissionKey: 'reminders' },
   { pattern: /^\/bank-import(?:\/|$)/, permissionKey: 'bank-import' },
+  { pattern: /^\/reports(?:\/|$)/, permissionKey: 'reports' },
   { pattern: /^\/audit(?:\/|$)/, permissionKey: 'audit' },
 ]
 

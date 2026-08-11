@@ -46,6 +46,7 @@ import { UsersPage } from '../features/users/pages/UsersPage'
 import { UserUpdatePage } from '../features/users/pages/UserUpdatePage'
 import { MainLayout } from '../layouts/MainLayout'
 import { ModulePermissionsPage } from '../features/permissions/pages/ModulePermissionsPage'
+import { ReportsPage } from '../features/reports/pages/ReportsPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
           { path: '/alerts', element: <FinancialAlertsPage /> },
           { path: '/reminders', element: <FinancialRemindersPage /> },
           { path: '/bank-import', element: <BankImportPage /> },
+          { path: '/reports', element: <ReportsPage /> },
           { path: '/profile', element: <PersonalProfilePage /> },
           { path: '/audit', element: <AuditEventsPage /> },
           { path: '/catalogs', element: <CatalogsPage /> },
