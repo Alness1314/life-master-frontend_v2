@@ -28,6 +28,7 @@ export function FormPasswordField<T extends FieldValues>({
     <Controller
       control={control}
       name={name}
+      rules={required ? { required: `${label} es obligatorio.` } : undefined}
       render={({ field, fieldState }) => (
         <TextField
           {...field}

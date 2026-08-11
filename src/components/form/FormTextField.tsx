@@ -13,6 +13,7 @@ interface FormTextFieldProps<T extends FieldValues> {
   required?: boolean
   multiline?: boolean
   rows?: number
+  step?: number | string
 }
 
 export function FormTextField<T extends FieldValues>({
@@ -25,11 +26,13 @@ export function FormTextField<T extends FieldValues>({
   required = false,
   multiline = false,
   rows,
+  step,
 }: FormTextFieldProps<T>) {
   return (
     <Controller
       control={control}
       name={name}
+      rules={required ? { required: `${label} es obligatorio.` } : undefined}
       render={({ field, fieldState }) => (
         <TextField
           {...field}
@@ -44,6 +47,7 @@ export function FormTextField<T extends FieldValues>({
           slotProps={{
             htmlInput: {
               'aria-required': required,
+              step: type === 'number' ? step : undefined,
             },
           }}
           sx={multiline ? {

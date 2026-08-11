@@ -11,6 +11,7 @@ export interface CrudField {
   required?: boolean
   maxLength?: number
   min?: number
+  step?: number | string
   rows?: number
   options?: { label: string; value: string }[]
   table?: boolean

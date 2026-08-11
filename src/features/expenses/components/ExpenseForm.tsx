@@ -139,6 +139,7 @@ export function ExpenseForm({
             label="Monto"
             name="amount"
             required
+            step="0.00000001"
             type="number"
           />
           <div className="md:col-span-2">

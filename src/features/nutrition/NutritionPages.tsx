@@ -133,7 +133,7 @@ export function NutritionPage() {
   return <ModulePageLayout
     actions={access.canCreate ? <Button onClick={() => navigate('/nutrition/register')} startIcon={<MaterialSymbol name="add" size={20} />} variant="contained">Registrar comida</Button> : undefined}
     ancestors={[{ label: 'Catálogos', to: '/catalogs' }]}
-    description="Registra tus comidas; el detalle de alimentos y la fotografía son opcionales."
+    description="Registra tus comidas y agrega los detalles que necesites."
     title="Nutrición"
   >
     <DynamicDataTable columns={columns} data={query.data ?? []} emptyMessage="No hay registros de nutrición." error={query.error ? 'No fue posible cargar los registros.' : null} getRowId={(row) => row.id} loading={query.isLoading} />
@@ -236,28 +236,28 @@ export function NutritionEditorPage({ mode }: { mode: 'create' | 'update' }) {
     {record.isLoading ? <div className="grid min-h-64 place-items-center"><CircularProgress /></div> : <Paper component="form" onSubmit={handleSubmit((values) => save.mutate(values))} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 2, sm: 3 } }}>
       <Typography sx={{ mb: 2 }} variant="h6">Datos generales</Typography>
       <div className="grid gap-x-5 md:grid-cols-2">
-        <TextField {...register('dateTimeConsumption', { required: true })} helperText=" " label={<FieldLabel required>Fecha y hora de consumo</FieldLabel>} type="datetime-local" />
-        <TextField {...register('mealType', { required: true })} helperText=" " label={<FieldLabel required>Tipo de comida</FieldLabel>} select>{mealTypes.map((type) => <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>)}</TextField>
-        <TextField {...register('name', { required: 'El nombre es obligatorio.', maxLength: { value: 256, message: 'Máximo 256 caracteres.' } })} className="md:col-span-2" error={Boolean(errors.name)} helperText={errors.name?.message ?? ' '} label={<FieldLabel required>Nombre</FieldLabel>} />
-        <TextField {...register('notes', { maxLength: 4000 })} className="md:col-span-2" helperText=" " label="Descripción (notas)" multiline rows={3} />
+        <TextField {...register('dateTimeConsumption', { required: 'La fecha y hora de consumo son obligatorias.' })} error={Boolean(errors.dateTimeConsumption)} helperText={errors.dateTimeConsumption?.message ?? ' '} label={<FieldLabel required>Fecha y hora de consumo</FieldLabel>} type="datetime-local" />
+        <TextField {...register('mealType', { required: 'El tipo de comida es obligatorio.' })} error={Boolean(errors.mealType)} helperText={errors.mealType?.message ?? ' '} label={<FieldLabel required>Tipo de comida</FieldLabel>} select>{mealTypes.map((type) => <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>)}</TextField>
+        <TextField {...register('name', { required: 'El nombre es obligatorio.', validate: (value) => value.trim().length > 0 || 'El nombre es obligatorio.', maxLength: { value: 256, message: 'Máximo 256 caracteres.' } })} className="md:col-span-2" error={Boolean(errors.name)} helperText={errors.name?.message ?? ' '} label={<FieldLabel required>Nombre</FieldLabel>} />
+        <TextField {...register('notes', { maxLength: { value: 4000, message: 'Máximo 4000 caracteres.' } })} className="md:col-span-2" error={Boolean(errors.notes)} helperText={errors.notes?.message ?? ' '} label="Descripción (notas)" multiline rows={3} />
       </div>
 
       <Divider sx={{ my: 2 }} />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div><Typography variant="h6">Alimentos</Typography><Typography color="text.secondary" variant="body2">Opcional. Agrega únicamente los alimentos que quieras detallar.</Typography></div>
+        <div><Typography variant="h6">Alimentos</Typography><Typography color="text.secondary" variant="body2">Agrega únicamente los alimentos que quieras detallar.</Typography></div>
         <Button onClick={() => foods.append(emptyFood())} startIcon={<MaterialSymbol name="add" size={19} />} type="button" variant="outlined">Agregar alimento</Button>
       </div>
       {foods.fields.length === 0 ? <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}><Typography color="text.secondary">No se agregaron alimentos.</Typography></Paper> : <div className="grid gap-3">{foods.fields.map((food, index) => <Paper key={food.id} variant="outlined" sx={{ p: 2 }}><div className="grid gap-x-4 md:grid-cols-2 xl:grid-cols-4">
-        <TextField {...register(`food.${index}.foodName`, { required: 'El alimento es obligatorio.', maxLength: 256 })} error={Boolean(errors.food?.[index]?.foodName)} helperText={errors.food?.[index]?.foodName?.message ?? ' '} label={<FieldLabel required>Alimento</FieldLabel>} />
-        <TextField {...register(`food.${index}.calories`, { min: { value: 0, message: 'No puede ser menor que cero.' }, valueAsNumber: false })} error={Boolean(errors.food?.[index]?.calories)} helperText={errors.food?.[index]?.calories?.message ?? 'Opcional'} label="Calorías" type="number" />
-        <TextField {...register(`food.${index}.quantity`, { required: 'La cantidad es obligatoria.', maxLength: 256 })} error={Boolean(errors.food?.[index]?.quantity)} helperText={errors.food?.[index]?.quantity?.message ?? ' '} label={<FieldLabel required>Cantidad</FieldLabel>} />
-        <div className="flex items-start gap-2"><TextField {...register(`food.${index}.unitMeasurement`, { maxLength: 128 })} fullWidth helperText="Opcional" label="Unidad de medida" /><IconButton aria-label="Eliminar alimento" color="error" onClick={() => foods.remove(index)}><MaterialSymbol name="delete" size={22} /></IconButton></div>
+        <TextField {...register(`food.${index}.foodName`, { required: 'El alimento es obligatorio.', validate: (value) => value.trim().length > 0 || 'El alimento es obligatorio.', maxLength: { value: 256, message: 'Máximo 256 caracteres.' } })} error={Boolean(errors.food?.[index]?.foodName)} helperText={errors.food?.[index]?.foodName?.message ?? ' '} label={<FieldLabel required>Alimento</FieldLabel>} />
+        <TextField {...register(`food.${index}.calories`, { min: { value: 0, message: 'No puede ser menor que cero.' }, valueAsNumber: false })} error={Boolean(errors.food?.[index]?.calories)} helperText={errors.food?.[index]?.calories?.message ?? ' '} label="Calorías" slotProps={{ htmlInput: { step: 1 } }} type="number" />
+        <TextField {...register(`food.${index}.quantity`, { required: 'La cantidad es obligatoria.', validate: (value) => value.trim().length > 0 || 'La cantidad es obligatoria.', maxLength: { value: 256, message: 'Máximo 256 caracteres.' } })} error={Boolean(errors.food?.[index]?.quantity)} helperText={errors.food?.[index]?.quantity?.message ?? ' '} label={<FieldLabel required>Cantidad</FieldLabel>} />
+        <div className="flex items-start gap-2"><TextField {...register(`food.${index}.unitMeasurement`, { maxLength: { value: 128, message: 'Máximo 128 caracteres.' } })} error={Boolean(errors.food?.[index]?.unitMeasurement)} fullWidth helperText={errors.food?.[index]?.unitMeasurement?.message ?? ' '} label="Unidad de medida" /><IconButton aria-label="Eliminar alimento" color="error" onClick={() => foods.remove(index)}><MaterialSymbol name="delete" size={22} /></IconButton></div>
       </div></Paper>)}</div>}
 
       <Divider sx={{ my: 2 }} />
       <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_1fr] md:items-center">
         <Box sx={{ bgcolor: 'action.hover', border: '1px dashed', borderColor: 'divider', display: 'grid', minHeight: 190, overflow: 'hidden', placeItems: 'center' }}>
-          {displayedPhoto ? <Box alt="Vista previa de la comida" component="img" src={displayedPhoto} sx={{ height: 220, objectFit: 'cover', width: '100%' }} /> : <div className="grid place-items-center gap-2 p-4 text-center"><MaterialSymbol name="add_a_photo" size={42} style={{ color: '#7567e8' }} /><Typography color="text.secondary">Fotografía opcional</Typography></div>}
+          {displayedPhoto ? <Box alt="Vista previa de la comida" component="img" src={displayedPhoto} sx={{ height: 220, objectFit: 'cover', width: '100%' }} /> : <div className="grid place-items-center gap-2 p-4 text-center"><MaterialSymbol name="add_a_photo" size={42} style={{ color: '#7567e8' }} /><Typography color="text.secondary">Fotografía</Typography></div>}
         </Box>
         <div><Typography variant="h6">Fotografía</Typography><Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">Selecciona una imagen o abre la cámara trasera del teléfono.</Typography><div className="flex flex-wrap gap-2">
           <Button component="label" startIcon={<MaterialSymbol name="photo_library" size={19} />} variant="outlined">Seleccionar foto<input accept="image/png,image/jpeg,image/webp" hidden onChange={selectPhoto} type="file" /></Button>

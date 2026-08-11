@@ -34,6 +34,7 @@ export const incomeConfig: CrudModuleConfig = {
       type: 'number',
       required: true,
       min: 0.01,
+      step: 0.00000001,
       table: true,
       format: (value, record) => new Intl.NumberFormat('es-MX', {
         style: 'currency',
@@ -324,6 +325,7 @@ export const financialAccountConfig: CrudModuleConfig = {
       label: 'Saldo inicial',
       type: 'number',
       required: true,
+      step: 0.00000001,
       table: true,
       format: formatAccountMoney,
     },
@@ -427,6 +429,7 @@ export const recurringMovementConfig: CrudModuleConfig = {
       type: 'number',
       required: true,
       min: 0.01,
+      step: 0.00000001,
       table: true,
       format: (value, record) => new Intl.NumberFormat('es-MX', {
         style: 'currency',
@@ -552,7 +555,7 @@ export const exerciseConfig: CrudModuleConfig = {
     { name: 'trainingDate', label: 'Fecha de entrenamiento', type: 'date', required: true, defaultValue: today, table: true },
     { name: 'startTime', label: 'Hora de inicio', type: 'time', required: true, table: true },
     { name: 'endTime', label: 'Hora de término', type: 'time', required: true, table: true },
-    { name: 'durationMinutes', label: 'Duración (minutos)', type: 'number', required: true, min: 1, table: true },
+    { name: 'durationMinutes', label: 'Duración (minutos)', type: 'number', required: true, min: 1, step: 1, table: true },
     { name: 'notes', label: 'Notas', type: 'textarea', maxLength: 2000, rows: 4 },
   ],
   normalizeRequest: (values) => ({

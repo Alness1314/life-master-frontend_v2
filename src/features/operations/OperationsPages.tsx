@@ -203,14 +203,14 @@ export function FinancialRemindersPage() {
       description="Programa avisos para pagos y compromisos financieros."
       title="Recordatorios financieros"
     >
-      {access.canCreate && <FormCard onSubmit={(event) => { event.preventDefault(); saveMutation.mutate() }}>
+      {access.canCreate && <FormCard onSubmit={(event) => { event.preventDefault(); if (form.title.trim() && form.message.trim() && form.scheduledAt) saveMutation.mutate() }}>
         <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
           <TextField
             error={Boolean(saveMutation.error)}
             helperText=" "
             label={<FieldLabel required>Título</FieldLabel>}
             onChange={(event) => setForm({ ...form, title: event.target.value })}
-            slotProps={{ htmlInput: { 'aria-required': true } }}
+            slotProps={{ htmlInput: { 'aria-required': true, required: true } }}
             value={form.title}
           />
           <TextField
@@ -218,7 +218,7 @@ export function FinancialRemindersPage() {
             label={<FieldLabel required>Fecha y hora</FieldLabel>}
             onChange={(event) => setForm({ ...form, scheduledAt: event.target.value })}
             slotProps={{
-              htmlInput: { 'aria-required': true },
+              htmlInput: { 'aria-required': true, required: true },
               inputLabel: { shrink: true },
             }}
             type="datetime-local"
@@ -231,14 +231,14 @@ export function FinancialRemindersPage() {
             multiline
             onChange={(event) => setForm({ ...form, message: event.target.value })}
             rows={3}
-            slotProps={{ htmlInput: { 'aria-required': true } }}
+            slotProps={{ htmlInput: { 'aria-required': true, required: true } }}
             value={form.message}
           />
         </div>
         {saveMutation.error && <Alert severity="error">{getApiErrorMessage(saveMutation.error)}</Alert>}
         <div className="mt-4 flex justify-end">
           <Button
-            disabled={!form.title || !form.message || !form.scheduledAt || saveMutation.isPending}
+            disabled={!form.title.trim() || !form.message.trim() || !form.scheduledAt || saveMutation.isPending}
             startIcon={<MaterialSymbol name="add_alert" />}
             type="submit"
             variant="contained"
@@ -427,7 +427,6 @@ export function PersonalProfilePage() {
             <FormPasswordField
               control={control}
               disabled={mutation.isPending}
-              hint="Déjala vacía para conservar la contraseña actual."
               label="Nueva contraseña"
               name="password"
             />

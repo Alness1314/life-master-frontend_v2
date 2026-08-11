@@ -320,6 +320,10 @@ function CrudForm({ config, record, pending, serverError, onSubmit }: {
               name={field.name}
               rules={{
                 required: field.required ? `${field.label} es obligatorio.` : false,
+                validate: field.required
+                  ? (value) => typeof value !== 'string' || value.trim().length > 0
+                    || `${field.label} es obligatorio.`
+                  : undefined,
                 maxLength: field.maxLength
                   ? { value: field.maxLength, message: `Máximo ${field.maxLength} caracteres.` }
                   : undefined,
@@ -339,6 +343,12 @@ function CrudForm({ config, record, pending, serverError, onSubmit }: {
                   multiline={field.type === 'textarea'}
                   rows={field.rows ?? (field.type === 'textarea' ? 4 : undefined)}
                   select={field.type === 'select'}
+                  slotProps={{
+                    htmlInput: {
+                      min: field.type === 'number' ? field.min : undefined,
+                      step: field.type === 'number' ? field.step : undefined,
+                    },
+                  }}
                   type={field.type === 'textarea' || field.type === 'select' ? 'text' : field.type}
                 >
                   {field.type === 'select' && (

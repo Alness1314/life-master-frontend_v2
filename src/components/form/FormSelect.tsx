@@ -27,6 +27,7 @@ export function FormSelect<T extends FieldValues>({
     <Controller
       control={control}
       name={name}
+      rules={required ? { required: `${label} es obligatorio.` } : undefined}
       render={({ field, fieldState }) => (
         <FormControl
           disabled={disabled}

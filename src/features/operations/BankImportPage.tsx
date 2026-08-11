@@ -364,12 +364,13 @@ export function BankImportPage() {
           </TextField>
           <TextField
             helperText="Se aplica a movimientos que no indiquen moneda."
-            label={<FieldLabel>Moneda predeterminada</FieldLabel>}
+            label={<FieldLabel required>Moneda predeterminada</FieldLabel>}
             onChange={(event) => {
               setDefaultCurrency(event.target.value)
               invalidatePreview()
             }}
             select
+            slotProps={{ htmlInput: { 'aria-required': true } }}
             value={selectedAccount?.currency ?? defaultCurrency}
           >
             {toCurrencySelectOptions(currencies.data).map((currency) => (
