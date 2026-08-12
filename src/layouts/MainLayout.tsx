@@ -31,6 +31,7 @@ import { apiClient } from '../api/client'
 import { API_ROUTES } from '../config/apiRoutes'
 import { blobToDataUrl } from '../features/users/profileImage'
 import { ModuleAccessBoundary } from '../features/modules/ModuleAccessBoundary'
+import { NotificationCenter } from '../features/alerts/NotificationCenter'
 
 const drawerWidth = 278
 
@@ -63,6 +64,12 @@ function isDashboardRoute(module: SidebarModule) {
   return module.route.trim().replace(/^\/+|\/+$/g, '').toLowerCase() === 'dashboard'
 }
 
+function isAlertsModule(module: SidebarModule) {
+  const route = module.route.trim().replace(/^\/+|\/+$/g, '').toLowerCase()
+  const key = module.permissionKey?.trim().replace(/^\/+|\/+$/g, '').toLowerCase()
+  return route === 'alerts' || key === 'alerts'
+}
+
 export function MainLayout() {
   const navigate = useNavigate()
   const theme = useTheme()
@@ -92,6 +99,7 @@ export function MainLayout() {
       icon: <MaterialSymbol name="monitoring" />,
     }] : []),
     ...sidebarModules
+      .filter((module) => !isAlertsModule(module))
       .filter((module) => !isDashboardRoute(module) || isCatalogsModule(module))
       .map((module) => ({
         id: module.id,
@@ -103,7 +111,9 @@ export function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
-  const currentTitle = navigation.find((item) => location.pathname.startsWith(item.route))?.name ?? 'Life Master'
+  const currentTitle = location.pathname.startsWith('/alerts')
+    ? 'Notificaciones'
+    : navigation.find((item) => location.pathname.startsWith(item.route))?.name ?? 'Life Master'
   const openProfile = (event: MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget)
 
   const drawer = (
@@ -197,6 +207,7 @@ export function MainLayout() {
               <MaterialSymbol name={mode === 'dark' ? 'light_mode' : 'dark_mode'} />
             </IconButton>
           </Tooltip>
+          <NotificationCenter />
           <Tooltip title="Cuenta">
             <IconButton onClick={openProfile} size="small">
               <Avatar

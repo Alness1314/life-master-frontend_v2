@@ -87,6 +87,7 @@ export const API_ROUTES = {
     root: (userId: string) => `/users/${userId}/alerts`,
     refresh: (userId: string) => `/users/${userId}/alerts/refresh`,
     markRead: (userId: string, alertId: string) => `/users/${userId}/alerts/${alertId}/read`,
+    markAllRead: (userId: string) => `/users/${userId}/alerts/read-all`,
   },
   reminders: {
     root: (userId: string) => `/users/${userId}/reminders`,
