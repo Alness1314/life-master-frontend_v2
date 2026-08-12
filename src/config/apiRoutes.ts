@@ -120,6 +120,8 @@ export const API_ROUTES = {
   reports: {
     byType: (userId: string, reportType: string) =>
       `/users/${userId}/reports/${reportType}`,
+    export: (userId: string, reportType: string) =>
+      `/users/${userId}/reports/${reportType}/export`,
     monthlyCsv: (userId: string, year: number, month: number, currency = 'MXN') =>
       `/users/${userId}/reports/monthly.csv?year=${year}&month=${month}&currency=${currency}`,
   },

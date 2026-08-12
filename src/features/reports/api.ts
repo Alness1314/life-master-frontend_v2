@@ -3,6 +3,17 @@ import { apiClient } from '../../api/client'
 import { API_ROUTES } from '../../config/apiRoutes'
 import type { ReportDataByKind, ReportKind, ReportPeriod } from './types'
 
+export type ReportExportFormat = 'PDF' | 'XLSX' | 'CSV'
+
+interface DownloadReportOptions {
+  kind: ReportKind
+  userId: string
+  period: ReportPeriod
+  referenceDate: string
+  currency: string
+  format: ReportExportFormat
+}
+
 interface ReportQueryOptions<K extends ReportKind> {
   enabled?: boolean
   kind: K
@@ -33,4 +44,26 @@ export function useReportQuery<K extends ReportKind>({
     ).data,
     enabled: enabled && Boolean(userId),
   })
+}
+
+export async function downloadReport({
+  kind,
+  userId,
+  period,
+  referenceDate,
+  currency,
+  format,
+}: DownloadReportOptions) {
+  const response = await apiClient.get<Blob>(API_ROUTES.reports.export(userId, kind), {
+    params: { format, period, referenceDate, currency },
+    responseType: 'blob',
+  })
+  const disposition = response.headers['content-disposition'] as string | undefined
+  const encodedName = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  const plainName = disposition?.match(/filename="?([^";]+)"?/i)?.[1]
+  const extension = format === 'XLSX' ? 'xlsx' : format.toLowerCase()
+  const fileName = encodedName
+    ? decodeURIComponent(encodedName)
+    : plainName ?? `life-master-${kind}-${referenceDate}.${extension}`
+  return { blob: response.data, fileName }
 }

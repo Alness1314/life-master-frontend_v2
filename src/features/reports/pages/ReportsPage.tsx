@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -19,10 +21,12 @@ import { useAuth } from '../../../auth/useAuth'
 import { getApiErrorMessage } from '../../../api/client'
 import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { ModulePageLayout } from '../../../components/layout/ModulePageLayout'
+import { useFeedback } from '../../../components/feedback/useFeedback'
 import { DynamicDataTable } from '../../../components/table/DynamicDataTable'
 import type { DataTableColumn } from '../../../components/table/DynamicDataTable'
 import { toCurrencySelectOptions, useCurrencies } from '../../../hooks/useCurrencies'
-import { useReportQuery } from '../api'
+import { downloadReport, useReportQuery } from '../api'
+import type { ReportExportFormat } from '../api'
 import type {
   AssistanceReport,
   AssistanceReportItem,
@@ -396,6 +400,7 @@ function ReportContent<K extends ReportKind>({ kind, data }: { kind: K; data: Re
 
 export function ReportsPage() {
   const { user } = useAuth()
+  const { showError, showSuccess } = useFeedback()
   const currenciesQuery = useCurrencies()
   const [kind, setKind] = useState<ReportKind>('summary')
   const [period, setPeriod] = useState<ReportPeriod>('MONTHLY')
@@ -410,6 +415,28 @@ export function ReportsPage() {
     period,
     referenceDate,
     currency,
+  })
+  const downloadMutation = useMutation({
+    mutationFn: (format: ReportExportFormat) => downloadReport({
+      kind,
+      userId: user!.id,
+      period,
+      referenceDate,
+      currency,
+      format,
+    }),
+    onSuccess: ({ blob, fileName }) => {
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = fileName
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      showSuccess('Reporte descargado correctamente.')
+    },
+    onError: (error) => showError(getApiErrorMessage(error)),
   })
 
   const changeReport = (nextKind: ReportKind) => {
@@ -479,6 +506,40 @@ export function ReportsPage() {
               </TextField>
             )}
           </div>
+          <Box
+            sx={{
+              alignItems: { xs: 'stretch', sm: 'center' },
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 1,
+              justifyContent: 'flex-end',
+              mt: 2,
+              pt: 2,
+            }}
+          >
+            <Typography color="text.secondary" sx={{ mr: { sm: 'auto' } }} variant="body2">
+              Descargar el reporte actual
+            </Typography>
+            {([
+              ['PDF', 'picture_as_pdf', 'PDF'],
+              ['XLSX', 'table_view', 'Excel'],
+              ['CSV', 'csv', 'CSV'],
+            ] as const).map(([format, icon, label]) => (
+              <Button
+                disabled={!user?.id || downloadMutation.isPending}
+                key={format}
+                onClick={() => downloadMutation.mutate(format)}
+                startIcon={downloadMutation.isPending && downloadMutation.variables === format
+                  ? <CircularProgress color="inherit" size={16} />
+                  : <MaterialSymbol name={icon} size={19} />}
+                variant={format === 'PDF' ? 'contained' : 'outlined'}
+              >
+                {label}
+              </Button>
+            ))}
+          </Box>
         </Paper>
 
         {reportQuery.isFetching && <LinearProgress aria-label="Actualizando reporte" />}
