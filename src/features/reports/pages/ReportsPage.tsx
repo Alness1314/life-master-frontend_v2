@@ -11,6 +11,8 @@ import {
   Tab,
   Tabs,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material'
 import { getApiErrorMessage } from '../../../api/client'
 import { useAuth } from '../../../auth/useAuth'
@@ -275,17 +277,34 @@ export function ReportsPage() {
         </Paper>
 
         <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: 2 }}>
-          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: period === 'CUSTOM' ? { xs: '1fr', md: 'repeat(3, 1fr)' } : { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
-            <TextField label="Periodo" onChange={(event) => setPeriod(event.target.value as ReportPeriod)} select size="small" value={period}>
-              {allowedPeriods(kind).map((value) => <MenuItem key={value} value={value}>{periodLabels[value]}</MenuItem>)}
-            </TextField>
+          <Box sx={{ display: 'grid', gap: 1.5 }}>
+            <ToggleButtonGroup
+              color="primary"
+              exclusive
+              fullWidth
+              onChange={(_, value: 'PREDEFINED' | 'CUSTOM' | null) => {
+                if (!value) return
+                setPeriod(value === 'CUSTOM' ? 'CUSTOM' : 'MONTHLY')
+              }}
+              size="small"
+              value={period === 'CUSTOM' ? 'CUSTOM' : 'PREDEFINED'}
+            >
+              <ToggleButton value="PREDEFINED">Periodo predefinido</ToggleButton>
+              <ToggleButton value="CUSTOM">Rango personalizado</ToggleButton>
+            </ToggleButtonGroup>
+
             {period === 'CUSTOM' ? (
-              <>
+              <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
                 <TextField error={Boolean(from && to && from > to)} label="Desde" onChange={(event) => setFrom(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={from} />
                 <TextField error={Boolean(from && to && from > to)} helperText={from && to && from > to ? 'La fecha hasta debe ser igual o posterior.' : undefined} label="Hasta" onChange={(event) => setTo(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={to} />
-              </>
+              </Box>
             ) : (
-              <TextField label="Fecha de referencia" onChange={(event) => setReferenceDate(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={referenceDate} />
+              <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+                <TextField label="Periodo" onChange={(event) => setPeriod(event.target.value as ReportPeriod)} select size="small" value={period}>
+                  {allowedPeriods(kind).filter((value) => value !== 'CUSTOM').map((value) => <MenuItem key={value} value={value}>{periodLabels[value]}</MenuItem>)}
+                </TextField>
+                <TextField label="Fecha de referencia" onChange={(event) => setReferenceDate(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={referenceDate} />
+              </Box>
             )}
           </Box>
           <Box sx={{ alignItems: { xs: 'stretch', sm: 'center' }, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, justifyContent: 'flex-end', mt: 2, pt: 2 }}>
