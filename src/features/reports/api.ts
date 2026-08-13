@@ -10,6 +10,8 @@ interface DownloadReportOptions {
   userId: string
   period: ReportPeriod
   referenceDate: string
+  from: string
+  to: string
   currency: string
   format: ReportExportFormat
 }
@@ -20,6 +22,8 @@ interface ReportQueryOptions<K extends ReportKind> {
   userId?: string
   period: ReportPeriod
   referenceDate: string
+  from: string
+  to: string
   currency: string
 }
 
@@ -29,15 +33,17 @@ export function useReportQuery<K extends ReportKind>({
   userId,
   period,
   referenceDate,
+  from,
+  to,
   currency,
 }: ReportQueryOptions<K>) {
   return useQuery({
-    queryKey: ['reports', kind, userId, period, referenceDate, currency],
+    queryKey: ['reports', kind, userId, period, referenceDate, from, to, currency],
     queryFn: async () => (
       await apiClient.get<ReportDataByKind[K]>(API_ROUTES.reports.byType(userId!, kind), {
         params: {
           period,
-          referenceDate,
+          ...(period === 'CUSTOM' ? { from, to } : { referenceDate }),
           ...(['summary', 'expenses', 'income', 'debts'].includes(kind) ? { currency } : {}),
         },
       })
@@ -51,11 +57,18 @@ export async function downloadReport({
   userId,
   period,
   referenceDate,
+  from,
+  to,
   currency,
   format,
 }: DownloadReportOptions) {
   const response = await apiClient.get<Blob>(API_ROUTES.reports.export(userId, kind), {
-    params: { format, period, referenceDate, currency },
+    params: {
+      format,
+      period,
+      currency,
+      ...(period === 'CUSTOM' ? { from, to } : { referenceDate }),
+    },
     responseType: 'blob',
   })
   const disposition = response.headers['content-disposition'] as string | undefined

@@ -1,13 +1,9 @@
-import { useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
   CircularProgress,
   LinearProgress,
   MenuItem,
@@ -15,16 +11,14 @@ import {
   Tab,
   Tabs,
   TextField,
-  Typography,
 } from '@mui/material'
-import { useAuth } from '../../../auth/useAuth'
 import { getApiErrorMessage } from '../../../api/client'
+import { useAuth } from '../../../auth/useAuth'
+import { useFeedback } from '../../../components/feedback/useFeedback'
 import { MaterialSymbol } from '../../../components/icons/MaterialSymbol'
 import { ModulePageLayout } from '../../../components/layout/ModulePageLayout'
-import { useFeedback } from '../../../components/feedback/useFeedback'
 import { DynamicDataTable } from '../../../components/table/DynamicDataTable'
 import type { DataTableColumn } from '../../../components/table/DynamicDataTable'
-import { toCurrencySelectOptions, useCurrencies } from '../../../hooks/useCurrencies'
 import { downloadReport, useReportQuery } from '../api'
 import type { ReportExportFormat } from '../api'
 import type {
@@ -44,7 +38,6 @@ import type {
   ReportDataByKind,
   ReportKind,
   ReportPeriod,
-  ReportRange,
 } from '../types'
 
 const reportTabs: Array<{ kind: ReportKind; label: string; icon: string }> = [
@@ -62,359 +55,183 @@ const periodLabels: Record<ReportPeriod, string> = {
   WEEKLY: 'Semanal',
   FORTNIGHTLY: 'Quincenal',
   MONTHLY: 'Mensual',
+  CUSTOM: 'Personalizado',
 }
-
-const allPeriods = Object.keys(periodLabels) as ReportPeriod[]
 
 function allowedPeriods(kind: ReportKind): ReportPeriod[] {
-  if (kind === 'assistance') return ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY']
-  if (kind === 'exercises' || kind === 'nutrition') return ['DAILY', 'WEEKLY', 'MONTHLY']
-  return allPeriods
+  if (kind === 'assistance') return ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'CUSTOM']
+  if (kind === 'exercises' || kind === 'nutrition') return ['DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM']
+  return ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'CUSTOM']
 }
 
-function localToday() {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
+function localDate(offsetDays = 0) {
+  const value = new Date()
+  value.setDate(value.getDate() + offsetDays)
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${value.getFullYear()}-${month}-${day}`
 }
 
 function dateLabel(value: string) {
-  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' })
-    .format(new Date(`${value}T00:00:00`))
+  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`))
 }
 
 function dateTimeLabel(value: string) {
-  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' })
-    .format(new Date(value))
+  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 function timeLabel(value: string | null) {
-  if (!value) return '—'
-  return value.slice(0, 5)
+  return value ? value.slice(0, 5) : '—'
 }
 
 function durationLabel(minutes: number) {
   const hours = Math.floor(minutes / 60)
   const remaining = minutes % 60
-  if (!hours) return `${remaining} min`
-  return `${hours} h ${remaining ? `${remaining} min` : ''}`.trim()
+  return hours ? `${hours} h ${remaining ? `${remaining} min` : ''}`.trim() : `${remaining} min`
 }
 
-function RangeChip({ range }: { range: ReportRange }) {
-  return (
-    <Chip
-      icon={<MaterialSymbol name="date_range" size={18} />}
-      label={`${dateLabel(range.from)} — ${dateLabel(range.to)}`}
-      size="small"
-      variant="outlined"
-    />
-  )
+function moneyFormatter(currency: string) {
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency })
 }
 
-interface StatCardProps {
-  icon: string
-  label: string
-  value: ReactNode
-  tone?: 'primary' | 'success' | 'warning' | 'error'
+interface SummaryRow {
+  id: string
+  section: string
+  indicator: string
+  value: string
 }
 
-function StatCard({ icon, label, value, tone = 'primary' }: StatCardProps) {
-  const colors = {
-    primary: ['rgba(117, 103, 232, .14)', '#7567e8'],
-    success: ['rgba(67, 160, 71, .14)', '#43a047'],
-    warning: ['rgba(239, 143, 53, .14)', '#ef8f35'],
-    error: ['rgba(211, 47, 47, .14)', '#d32f2f'],
-  }[tone]
-  return (
-    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', minWidth: 0 }}>
-      <CardContent sx={{ p: 1.75, '&:last-child': { pb: 1.75 } }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <Typography color="text.secondary" variant="body2">{label}</Typography>
-            <Typography sx={{ fontSize: '1.25rem', mt: 0.4, overflowWrap: 'anywhere' }} variant="h6">
-              {value}
-            </Typography>
-          </div>
-          <div
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg"
-            style={{ backgroundColor: colors[0], color: colors[1] }}
-          >
-            <MaterialSymbol name={icon} size={21} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
+function SummaryTable({ report }: { report: ConsolidatedReport }) {
+  const money = moneyFormatter(report.currency)
+  const rows: SummaryRow[] = [
+    ['financial-income', 'Finanzas', 'Ingresos', money.format(report.financial.income)],
+    ['financial-expenses', 'Finanzas', 'Gastos', money.format(report.financial.expenses)],
+    ['financial-paid', 'Finanzas', 'Gastos pagados', money.format(report.financial.paidExpenses)],
+    ['financial-pending', 'Finanzas', 'Gastos pendientes', money.format(report.financial.pendingExpenses)],
+    ['financial-debt-proceeds', 'Finanzas', 'Entradas por deuda', money.format(report.financial.debtProceeds)],
+    ['financial-debt-payments', 'Finanzas', 'Pagos de deuda', money.format(report.financial.debtPayments)],
+    ['financial-outstanding', 'Finanzas', 'Deuda pendiente', money.format(report.financial.outstandingDebt)],
+    ['financial-result', 'Finanzas', 'Resultado operativo', money.format(report.financial.operatingResult)],
+    ['financial-cash-flow', 'Finanzas', 'Flujo neto', money.format(report.financial.netCashFlow)],
+    ['activity-assistance', 'Actividad', 'Registros de asistencia', String(report.activity.assistanceRecords)],
+    ['activity-retards', 'Actividad', 'Retardos', String(report.activity.retards)],
+    ['activity-absences', 'Actividad', 'Ausencias', String(report.activity.absences)],
+    ['activity-exercises', 'Actividad', 'Sesiones de ejercicio', String(report.activity.exerciseSessions)],
+    ['activity-minutes', 'Actividad', 'Tiempo de ejercicio', durationLabel(report.activity.exerciseMinutes)],
+    ['nutrition-meals', 'Nutrición', 'Comidas registradas', String(report.activity.nutritionMeals)],
+    ['nutrition-calories', 'Nutrición', 'Calorías conocidas', report.activity.knownCalories.toLocaleString('es-MX')],
+  ].map(([id, section, indicator, value]) => ({ id, section, indicator, value }))
+  const columns: DataTableColumn<SummaryRow>[] = [
+    { id: 'section', header: 'Sección', render: (row) => row.section, sortValue: (row) => row.section, filter: false },
+    { id: 'indicator', header: 'Indicador', render: (row) => row.indicator, sortValue: (row) => row.indicator, filter: false },
+    { id: 'value', header: 'Valor', align: 'right', render: (row) => row.value, sortValue: (row) => row.value, filter: false },
+  ]
+  return <DynamicDataTable columns={columns} data={rows} getRowId={(row) => row.id} initialPageSize={25} />
 }
 
-function StatGrid({ children }: { children: ReactNode }) {
-  return (
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 1.5,
-        gridTemplateColumns: {
-          xs: 'minmax(0, 1fr)',
-          sm: 'repeat(2, minmax(0, 1fr))',
-          lg: 'repeat(4, minmax(0, 1fr))',
-        },
-      }}
-    >
-      {children}
-    </Box>
-  )
-}
-
-function BreakdownPanel({
-  title,
-  values,
-  format = (value) => String(value),
-}: {
-  title: string
-  values: Record<string, number>
-  format?: (value: number) => string
-}) {
-  const entries = Object.entries(values).sort((left, right) => right[1] - left[1])
-  const max = Math.max(...entries.map(([, value]) => value), 1)
-  return (
-    <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: 2 }}>
-      <Typography variant="h6">{title}</Typography>
-      {entries.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-          No hay información para distribuir en este periodo.
-        </Typography>
-      ) : (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {entries.map(([label, value]) => (
-            <div key={label}>
-              <div className="mb-1 flex items-center justify-between gap-3">
-                <Typography noWrap variant="body2">{label}</Typography>
-                <Typography sx={{ fontWeight: 700 }} variant="body2">{format(value)}</Typography>
-              </div>
-              <Box sx={{ bgcolor: 'action.hover', height: 7, overflow: 'hidden' }}>
-                <Box sx={{ bgcolor: 'primary.main', height: '100%', width: `${(value / max) * 100}%` }} />
-              </Box>
-            </div>
-          ))}
-        </div>
-      )}
-    </Paper>
-  )
-}
-
-function SummaryView({ report }: { report: ConsolidatedReport }) {
-  const money = useMemo(() => new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: report.currency,
-  }), [report.currency])
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="payments" label="Ingresos" tone="success" value={money.format(report.financial.income)} />
-        <StatCard icon="receipt_long" label="Gastos" tone="warning" value={money.format(report.financial.expenses)} />
-        <StatCard icon="monitoring" label="Flujo neto" value={money.format(report.financial.netCashFlow)} />
-        <StatCard icon="trending_up" label="Resultado operativo" value={money.format(report.financial.operatingResult)} />
-        <StatCard icon="account_balance" label="Entrada por deuda" value={money.format(report.financial.debtProceeds)} />
-        <StatCard icon="credit_card" label="Pagos de deuda" tone="warning" value={money.format(report.financial.debtPayments)} />
-        <StatCard icon="credit_score" label="Deuda pendiente" tone="error" value={money.format(report.financial.outstandingDebt)} />
-        <StatCard icon="pending_actions" label="Gastos pendientes" tone="warning" value={money.format(report.financial.pendingExpenses)} />
-      </StatGrid>
-      <Typography sx={{ mt: 1 }} variant="h6">Actividad del periodo</Typography>
-      <StatGrid>
-        <StatCard icon="fact_check" label="Registros de asistencia" value={report.activity.assistanceRecords} />
-        <StatCard icon="schedule" label="Retardos" tone="warning" value={report.activity.retards} />
-        <StatCard icon="event_busy" label="Ausencias" tone="error" value={report.activity.absences} />
-        <StatCard icon="fitness_center" label="Sesiones de ejercicio" value={report.activity.exerciseSessions} />
-        <StatCard icon="timer" label="Tiempo de ejercicio" value={durationLabel(report.activity.exerciseMinutes)} />
-        <StatCard icon="restaurant" label="Comidas registradas" value={report.activity.nutritionMeals} />
-        <StatCard icon="local_fire_department" label="Calorías conocidas" value={report.activity.knownCalories.toLocaleString('es-MX')} />
-      </StatGrid>
-    </div>
-  )
-}
-
-function AssistanceView({ report }: { report: AssistanceReport }) {
+function AssistanceTable({ report }: { report: AssistanceReport }) {
   const columns: DataTableColumn<AssistanceReportItem>[] = [
-    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.workDate), sortValue: (row) => row.workDate, filter: { inputType: 'date' } },
-    { id: 'entry', header: 'Entrada', align: 'center', render: (row) => timeLabel(row.timeEntry), sortValue: (row) => row.timeEntry },
-    { id: 'departure', header: 'Salida', align: 'center', render: (row) => timeLabel(row.departureTime), sortValue: (row) => row.departureTime },
+    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.workDate), sortValue: (row) => row.workDate, filter: false },
+    { id: 'entry', header: 'Entrada', align: 'center', render: (row) => timeLabel(row.timeEntry), sortValue: (row) => row.timeEntry, filter: false },
+    { id: 'departure', header: 'Salida', align: 'center', render: (row) => timeLabel(row.departureTime), sortValue: (row) => row.departureTime, filter: false },
     { id: 'worked', header: 'Tiempo trabajado', align: 'center', render: (row) => durationLabel(row.workedMinutes), sortValue: (row) => row.workedMinutes, filter: false },
-    { id: 'status', header: 'Estado', align: 'center', render: (row) => {
-      if (row.unjustifiedAbsence) return <Chip color="error" label="Falta" size="small" variant="outlined" />
-      if (row.justifiedAbsence) return <Chip color="warning" label="Falta justificada" size="small" variant="outlined" />
-      if (row.retard) return <Chip color="warning" label="Retardo" size="small" variant="outlined" />
-      return <Chip color="success" label="A tiempo" size="small" variant="outlined" />
-    } },
+    { id: 'status', header: 'Estado', render: (row) => row.unjustifiedAbsence ? 'Falta' : row.justifiedAbsence ? 'Falta justificada' : row.retard ? 'Retardo' : 'A tiempo', sortValue: (row) => row.unjustifiedAbsence ? 'Falta' : row.justifiedAbsence ? 'Falta justificada' : row.retard ? 'Retardo' : 'A tiempo', filter: false },
   ]
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="event_available" label="Registros" value={report.records} />
-        <StatCard icon="check_circle" label="A tiempo" tone="success" value={report.onTime} />
-        <StatCard icon="schedule" label="Retardos" tone="warning" value={report.retards} />
-        <StatCard icon="event_busy" label="Faltas sin justificar" tone="error" value={report.unjustifiedAbsences} />
-        <StatCard icon="event_note" label="Faltas justificadas" tone="warning" value={report.justifiedAbsences} />
-        <StatCard icon="timer" label="Tiempo trabajado" value={durationLabel(report.workedMinutes)} />
-      </StatGrid>
-      <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
-    </div>
-  )
+  return <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
 }
 
-function ExerciseView({ report }: { report: ExerciseReport }) {
+function ExerciseTable({ report }: { report: ExerciseReport }) {
   const columns: DataTableColumn<ExerciseReportItem>[] = [
-    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.trainingDate), sortValue: (row) => row.trainingDate, filter: { inputType: 'date' } },
-    { id: 'activity', header: 'Actividad', render: (row) => row.activityType || 'Sin especificar', sortValue: (row) => row.activityType },
-    { id: 'start', header: 'Inicio', align: 'center', render: (row) => timeLabel(row.startTime), sortValue: (row) => row.startTime },
-    { id: 'end', header: 'Fin', align: 'center', render: (row) => timeLabel(row.endTime), sortValue: (row) => row.endTime },
+    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.trainingDate), sortValue: (row) => row.trainingDate, filter: false },
+    { id: 'activity', header: 'Actividad', render: (row) => row.activityType || 'Sin especificar', sortValue: (row) => row.activityType, filter: false },
+    { id: 'start', header: 'Inicio', align: 'center', render: (row) => timeLabel(row.startTime), sortValue: (row) => row.startTime, filter: false },
+    { id: 'end', header: 'Fin', align: 'center', render: (row) => timeLabel(row.endTime), sortValue: (row) => row.endTime, filter: false },
     { id: 'duration', header: 'Duración', align: 'center', render: (row) => durationLabel(row.durationMinutes ?? 0), sortValue: (row) => row.durationMinutes, filter: false },
-    { id: 'notes', header: 'Notas', minWidth: 260, render: (row) => row.notes || '—', sortValue: (row) => row.notes },
+    { id: 'notes', header: 'Notas', minWidth: 300, render: (row) => row.notes || '—', sortValue: (row) => row.notes, filter: false },
   ]
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="fitness_center" label="Sesiones" value={report.sessions} />
-        <StatCard icon="timer" label="Duración total" value={durationLabel(report.totalDurationMinutes)} />
-        <StatCard icon="avg_time" label="Promedio por sesión" value={durationLabel(Math.round(report.averageDurationMinutes))} />
-      </StatGrid>
-      <BreakdownPanel title="Sesiones por actividad" values={report.sessionsByActivity} />
-      <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
-    </div>
-  )
+  return <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
 }
 
-function NutritionView({ report }: { report: NutritionReport }) {
+function NutritionTable({ report }: { report: NutritionReport }) {
   const columns: DataTableColumn<NutritionReportItem>[] = [
-    { id: 'date', header: 'Consumo', minWidth: 180, render: (row) => dateTimeLabel(row.consumedAt), sortValue: (row) => row.consumedAt, filter: { inputType: 'date' } },
-    { id: 'name', header: 'Nombre', render: (row) => row.name, sortValue: (row) => row.name },
-    { id: 'type', header: 'Tipo de comida', render: (row) => row.mealType || 'Sin especificar', sortValue: (row) => row.mealType },
-    { id: 'foods', header: 'Alimentos', minWidth: 300, render: (row) => row.foods.length
-      ? row.foods.map((food) => `${food.name} (${food.quantity}${food.unitMeasurement ? ` ${food.unitMeasurement}` : ''})`).join(', ')
-      : 'Sin alimentos detallados', sortValue: (row) => row.foods.length, filter: false },
-    { id: 'calories', header: 'Calorías conocidas', align: 'right', render: (row) => row.foods.reduce((total, food) => total + (food.calories ?? 0), 0).toLocaleString('es-MX'), sortValue: (row) => row.foods.reduce((total, food) => total + (food.calories ?? 0), 0), filter: false },
-    { id: 'notes', header: 'Notas', minWidth: 240, render: (row) => row.notes || '—', sortValue: (row) => row.notes },
+    { id: 'date', header: 'Consumo', render: (row) => dateTimeLabel(row.consumedAt), sortValue: (row) => row.consumedAt, filter: false },
+    { id: 'name', header: 'Nombre', render: (row) => row.name, sortValue: (row) => row.name, filter: false },
+    { id: 'type', header: 'Tipo de comida', render: (row) => row.mealType || 'Sin especificar', sortValue: (row) => row.mealType, filter: false },
+    { id: 'foods', header: 'Alimentos', minWidth: 320, render: (row) => row.foods.length ? row.foods.map((food) => `${food.name} (${food.quantity}${food.unitMeasurement ? ` ${food.unitMeasurement}` : ''})`).join(', ') : 'Sin alimentos detallados', filter: false },
+    { id: 'calories', header: 'Calorías', align: 'right', render: (row) => row.foods.reduce((total, food) => total + (food.calories ?? 0), 0).toLocaleString('es-MX'), filter: false },
+    { id: 'notes', header: 'Notas', minWidth: 260, render: (row) => row.notes || '—', sortValue: (row) => row.notes, filter: false },
   ]
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="restaurant" label="Comidas" value={report.meals} />
-        <StatCard icon="nutrition" label="Alimentos detallados" value={report.foods} />
-        <StatCard icon="local_fire_department" label="Calorías conocidas" value={report.totalKnownCalories.toLocaleString('es-MX')} />
-        <StatCard icon="data_check" label="Alimentos con calorías" value={report.foodsWithCalories} />
-      </StatGrid>
-      <BreakdownPanel title="Comidas por tipo" values={report.mealsByType} />
-      <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
-    </div>
-  )
+  return <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
 }
 
-function ExpenseView({ report }: { report: ExpenseReport }) {
-  const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: report.currency })
+function ExpenseTable({ report }: { report: ExpenseReport }) {
+  const money = moneyFormatter(report.currency)
   const columns: DataTableColumn<ExpenseReportItem>[] = [
-    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.paymentDate), sortValue: (row) => row.paymentDate, filter: { inputType: 'date' } },
-    { id: 'description', header: 'Descripción', minWidth: 280, render: (row) => row.description, sortValue: (row) => row.description },
-    { id: 'category', header: 'Categoría', render: (row) => row.category || 'Sin categoría', sortValue: (row) => row.category },
-    { id: 'entity', header: 'Entidad', render: (row) => row.bankOrEntity, sortValue: (row) => row.bankOrEntity },
-    { id: 'status', header: 'Estado', align: 'center', render: (row) => <Chip color={row.paid ? 'success' : 'warning'} label={row.paid ? 'Pagado' : 'Pendiente'} size="small" variant="outlined" />, sortValue: (row) => row.paid ? 'Pagado' : 'Pendiente', filter: { inputType: 'select', options: [{ label: 'Pagado', value: 'Pagado' }, { label: 'Pendiente', value: 'Pendiente' }] } },
+    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.paymentDate), sortValue: (row) => row.paymentDate, filter: false },
+    { id: 'description', header: 'Descripción', minWidth: 300, render: (row) => row.description, sortValue: (row) => row.description, filter: false },
+    { id: 'category', header: 'Categoría', render: (row) => row.category || 'Sin categoría', sortValue: (row) => row.category, filter: false },
+    { id: 'entity', header: 'Entidad', render: (row) => row.bankOrEntity, sortValue: (row) => row.bankOrEntity, filter: false },
+    { id: 'status', header: 'Estado', render: (row) => row.paid ? 'Pagado' : 'Pendiente', sortValue: (row) => row.paid, filter: false },
     { id: 'amount', header: 'Importe', align: 'right', render: (row) => money.format(row.amount), sortValue: (row) => row.amount, filter: false },
   ]
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="receipt_long" label="Gasto total" tone="warning" value={money.format(report.total)} />
-        <StatCard icon="task_alt" label="Pagado" tone="success" value={money.format(report.paid)} />
-        <StatCard icon="pending_actions" label="Pendiente" tone="warning" value={money.format(report.pending)} />
-        <StatCard icon="format_list_numbered" label="Movimientos" value={report.records} />
-      </StatGrid>
-      <BreakdownPanel title="Gastos por categoría" values={report.totalsByCategory} format={(value) => money.format(value)} />
-      <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
-    </div>
-  )
+  return <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
 }
 
-function IncomeView({ report }: { report: IncomeReport }) {
-  const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: report.currency })
+function IncomeTable({ report }: { report: IncomeReport }) {
+  const money = moneyFormatter(report.currency)
   const columns: DataTableColumn<IncomeReportItem>[] = [
-    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.paymentDate), sortValue: (row) => row.paymentDate, filter: { inputType: 'date' } },
-    { id: 'source', header: 'Fuente', render: (row) => row.source, sortValue: (row) => row.source },
-    { id: 'description', header: 'Descripción', minWidth: 360, render: (row) => row.description, sortValue: (row) => row.description },
+    { id: 'date', header: 'Fecha', render: (row) => dateLabel(row.paymentDate), sortValue: (row) => row.paymentDate, filter: false },
+    { id: 'source', header: 'Fuente', render: (row) => row.source, sortValue: (row) => row.source, filter: false },
+    { id: 'description', header: 'Descripción', minWidth: 400, render: (row) => row.description, sortValue: (row) => row.description, filter: false },
     { id: 'amount', header: 'Importe', align: 'right', render: (row) => money.format(row.amount), sortValue: (row) => row.amount, filter: false },
   ]
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="payments" label="Ingresos totales" tone="success" value={money.format(report.total)} />
-        <StatCard icon="format_list_numbered" label="Movimientos" value={report.records} />
-      </StatGrid>
-      <BreakdownPanel title="Ingresos por fuente" values={report.totalsBySource} format={(value) => money.format(value)} />
-      <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
-    </div>
-  )
+  return <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
 }
 
-function DebtView({ report }: { report: DebtReport }) {
-  const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: report.currency })
+function DebtTable({ report }: { report: DebtReport }) {
+  const money = moneyFormatter(report.currency)
   const columns: DataTableColumn<DebtReportItem>[] = [
-    { id: 'creditor', header: 'Acreedor', render: (row) => row.creditor, sortValue: (row) => row.creditor },
-    { id: 'dueDate', header: 'Vencimiento', render: (row) => dateLabel(row.dueDate), sortValue: (row) => row.dueDate, filter: { inputType: 'date' } },
+    { id: 'creditor', header: 'Acreedor', render: (row) => row.creditor, sortValue: (row) => row.creditor, filter: false },
+    { id: 'dueDate', header: 'Vencimiento', render: (row) => dateLabel(row.dueDate), sortValue: (row) => row.dueDate, filter: false },
     { id: 'total', header: 'Importe original', align: 'right', render: (row) => money.format(row.totalAmount), sortValue: (row) => row.totalAmount, filter: false },
     { id: 'paid', header: 'Capital pagado', align: 'right', render: (row) => money.format(row.paidPrincipal), sortValue: (row) => row.paidPrincipal, filter: false },
     { id: 'pending', header: 'Saldo pendiente', align: 'right', render: (row) => money.format(row.outstandingAmount), sortValue: (row) => row.outstandingAmount, filter: false },
     { id: 'progress', header: 'Avance', align: 'center', render: (row) => `${Number(row.progressPercentage).toFixed(1)}%`, sortValue: (row) => row.progressPercentage, filter: false },
-    { id: 'status', header: 'Estado', align: 'center', render: (row) => <Chip color={row.fullyPaid ? 'success' : row.overdue ? 'error' : 'warning'} label={row.fullyPaid ? 'Liquidada' : row.overdue ? 'Vencida' : 'Pendiente'} size="small" variant="outlined" />, sortValue: (row) => row.fullyPaid ? 'Liquidada' : row.overdue ? 'Vencida' : 'Pendiente' },
+    { id: 'status', header: 'Estado', render: (row) => row.fullyPaid ? 'Liquidada' : row.overdue ? 'Vencida' : 'Pendiente', sortValue: (row) => row.fullyPaid ? 'Liquidada' : row.overdue ? 'Vencida' : 'Pendiente', filter: false },
   ]
-  return (
-    <div className="grid gap-3">
-      <div className="flex justify-end"><RangeChip range={report.range} /></div>
-      <StatGrid>
-        <StatCard icon="account_balance" label="Deuda original" value={money.format(report.originalAmount)} />
-        <StatCard icon="credit_score" label="Saldo pendiente" tone="error" value={money.format(report.outstandingAmount)} />
-        <StatCard icon="payments" label="Pagado en el periodo" tone="success" value={money.format(report.paidInPeriod)} />
-        <StatCard icon="percent" label="Intereses del periodo" tone="warning" value={money.format(report.interestPaidInPeriod)} />
-        <StatCard icon="event_upcoming" label="Pagos programados" value={money.format(report.scheduledInPeriod)} />
-        <StatCard icon="warning" label="Deudas vencidas" tone={report.overdueDebts ? 'error' : 'success'} value={report.overdueDebts} />
-      </StatGrid>
-      <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
-    </div>
-  )
+  return <DynamicDataTable columns={columns} data={report.items} getRowId={(row) => row.id} initialPageSize={10} />
 }
 
-function ReportContent<K extends ReportKind>({ kind, data }: { kind: K; data: ReportDataByKind[K] }) {
+function ReportTable<K extends ReportKind>({ kind, data }: { kind: K; data: ReportDataByKind[K] }) {
   switch (kind) {
-    case 'summary': return <SummaryView report={data as ConsolidatedReport} />
-    case 'assistance': return <AssistanceView report={data as AssistanceReport} />
-    case 'exercises': return <ExerciseView report={data as ExerciseReport} />
-    case 'nutrition': return <NutritionView report={data as NutritionReport} />
-    case 'expenses': return <ExpenseView report={data as ExpenseReport} />
-    case 'income': return <IncomeView report={data as IncomeReport} />
-    case 'debts': return <DebtView report={data as DebtReport} />
+    case 'summary': return <SummaryTable report={data as ConsolidatedReport} />
+    case 'assistance': return <AssistanceTable report={data as AssistanceReport} />
+    case 'exercises': return <ExerciseTable report={data as ExerciseReport} />
+    case 'nutrition': return <NutritionTable report={data as NutritionReport} />
+    case 'expenses': return <ExpenseTable report={data as ExpenseReport} />
+    case 'income': return <IncomeTable report={data as IncomeReport} />
+    case 'debts': return <DebtTable report={data as DebtReport} />
   }
 }
 
 export function ReportsPage() {
   const { user } = useAuth()
   const { showError, showSuccess } = useFeedback()
-  const currenciesQuery = useCurrencies()
   const [kind, setKind] = useState<ReportKind>('summary')
   const [period, setPeriod] = useState<ReportPeriod>('MONTHLY')
-  const [referenceDate, setReferenceDate] = useState(localToday)
-  const [currency, setCurrency] = useState('MXN')
-  const currencyOptions = toCurrencySelectOptions(currenciesQuery.data)
-  const periods = allowedPeriods(kind)
-  const financialReport = ['summary', 'expenses', 'income', 'debts'].includes(kind)
+  const [referenceDate, setReferenceDate] = useState(localDate)
+  const [from, setFrom] = useState(() => localDate(-30))
+  const [to, setTo] = useState(localDate)
+  const customDatesValid = period !== 'CUSTOM' || (Boolean(from && to) && from <= to)
   const reportQuery = useReportQuery({
+    enabled: customDatesValid,
     kind,
     userId: user?.id,
     period,
     referenceDate,
-    currency,
+    from,
+    to,
+    currency: 'MXN',
   })
   const downloadMutation = useMutation({
     mutationFn: (format: ReportExportFormat) => downloadReport({
@@ -422,7 +239,9 @@ export function ReportsPage() {
       userId: user!.id,
       period,
       referenceDate,
-      currency,
+      from,
+      to,
+      currency: 'MXN',
       format,
     }),
     onSuccess: ({ blob, fileName }) => {
@@ -439,103 +258,39 @@ export function ReportsPage() {
     onError: (error) => showError(getApiErrorMessage(error)),
   })
 
-  const changeReport = (nextKind: ReportKind) => {
+  const changeKind = (nextKind: ReportKind) => {
     setKind(nextKind)
     if (!allowedPeriods(nextKind).includes(period)) setPeriod('MONTHLY')
   }
 
   return (
-    <ModulePageLayout
-      contentClassName="pb-1"
-      description="Consulta indicadores y movimientos por periodo para cada módulo."
-      title="Reportes"
-    >
+    <ModulePageLayout description="Consulta los registros de cada módulo por periodo." title="Reportes">
       <div className="grid gap-3">
         <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-          <Tabs
-            allowScrollButtonsMobile
-            onChange={(_, value: ReportKind) => changeReport(value)}
-            scrollButtons="auto"
-            value={kind}
-            variant="scrollable"
-          >
+          <Tabs allowScrollButtonsMobile onChange={(_, value: ReportKind) => changeKind(value)} scrollButtons="auto" value={kind} variant="scrollable">
             {reportTabs.map((tab) => (
-              <Tab
-                icon={<MaterialSymbol name={tab.icon} size={20} />}
-                iconPosition="start"
-                key={tab.kind}
-                label={tab.label}
-                value={tab.kind}
-              />
+              <Tab icon={<MaterialSymbol name={tab.icon} size={20} />} iconPosition="start" key={tab.kind} label={tab.label} value={tab.kind} />
             ))}
           </Tabs>
         </Paper>
 
         <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: 2 }}>
-          <div className={`grid gap-3 ${financialReport ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-            <TextField
-              fullWidth
-              label="Periodo"
-              onChange={(event) => setPeriod(event.target.value as ReportPeriod)}
-              select
-              size="small"
-              value={period}
-            >
-              {periods.map((value) => <MenuItem key={value} value={value}>{periodLabels[value]}</MenuItem>)}
+          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: period === 'CUSTOM' ? { xs: '1fr', md: 'repeat(3, 1fr)' } : { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
+            <TextField label="Periodo" onChange={(event) => setPeriod(event.target.value as ReportPeriod)} select size="small" value={period}>
+              {allowedPeriods(kind).map((value) => <MenuItem key={value} value={value}>{periodLabels[value]}</MenuItem>)}
             </TextField>
-            <TextField
-              fullWidth
-              label="Fecha de referencia"
-              onChange={(event) => setReferenceDate(event.target.value)}
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
-              type="date"
-              value={referenceDate}
-            />
-            {financialReport && (
-              <TextField
-                fullWidth
-                label="Moneda"
-                onChange={(event) => setCurrency(event.target.value)}
-                select
-                size="small"
-                value={currency}
-              >
-                {(currencyOptions.length ? currencyOptions : [{ label: 'MXN — Peso mexicano', value: 'MXN' }])
-                  .map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
-              </TextField>
+            {period === 'CUSTOM' ? (
+              <>
+                <TextField error={Boolean(from && to && from > to)} label="Desde" onChange={(event) => setFrom(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={from} />
+                <TextField error={Boolean(from && to && from > to)} helperText={from && to && from > to ? 'La fecha hasta debe ser igual o posterior.' : undefined} label="Hasta" onChange={(event) => setTo(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={to} />
+              </>
+            ) : (
+              <TextField label="Fecha de referencia" onChange={(event) => setReferenceDate(event.target.value)} size="small" slotProps={{ inputLabel: { shrink: true } }} type="date" value={referenceDate} />
             )}
-          </div>
-          <Box
-            sx={{
-              alignItems: { xs: 'stretch', sm: 'center' },
-              borderTop: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: 1,
-              justifyContent: 'flex-end',
-              mt: 2,
-              pt: 2,
-            }}
-          >
-            <Typography color="text.secondary" sx={{ mr: { sm: 'auto' } }} variant="body2">
-              Descargar el reporte actual
-            </Typography>
-            {([
-              ['PDF', 'picture_as_pdf', 'PDF'],
-              ['XLSX', 'table_view', 'Excel'],
-              ['CSV', 'csv', 'CSV'],
-            ] as const).map(([format, icon, label]) => (
-              <Button
-                disabled={!user?.id || downloadMutation.isPending}
-                key={format}
-                onClick={() => downloadMutation.mutate(format)}
-                startIcon={downloadMutation.isPending && downloadMutation.variables === format
-                  ? <CircularProgress color="inherit" size={16} />
-                  : <MaterialSymbol name={icon} size={19} />}
-                variant={format === 'PDF' ? 'contained' : 'outlined'}
-              >
+          </Box>
+          <Box sx={{ alignItems: { xs: 'stretch', sm: 'center' }, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, justifyContent: 'flex-end', mt: 2, pt: 2 }}>
+            {([['PDF', 'picture_as_pdf', 'PDF'], ['XLSX', 'table_view', 'Excel'], ['CSV', 'csv', 'CSV']] as const).map(([format, icon, label]) => (
+              <Button disabled={!customDatesValid || !reportQuery.data || downloadMutation.isPending} key={format} onClick={() => downloadMutation.mutate(format)} startIcon={downloadMutation.isPending && downloadMutation.variables === format ? <CircularProgress color="inherit" size={16} /> : <MaterialSymbol name={icon} size={19} />} variant={format === 'PDF' ? 'contained' : 'outlined'}>
                 {label}
               </Button>
             ))}
@@ -543,11 +298,9 @@ export function ReportsPage() {
         </Paper>
 
         {reportQuery.isFetching && <LinearProgress aria-label="Actualizando reporte" />}
-        {reportQuery.isLoading && (
-          <div className="grid min-h-64 place-items-center"><CircularProgress aria-label="Cargando reporte" /></div>
-        )}
         {reportQuery.error && <Alert severity="error">{getApiErrorMessage(reportQuery.error)}</Alert>}
-        {reportQuery.data && <ReportContent data={reportQuery.data} kind={kind} />}
+        {reportQuery.data && <ReportTable data={reportQuery.data} kind={kind} />}
+        {!reportQuery.data && reportQuery.isLoading && <Box sx={{ display: 'grid', minHeight: 240, placeItems: 'center' }}><CircularProgress /></Box>}
       </div>
     </ModulePageLayout>
   )

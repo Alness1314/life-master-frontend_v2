@@ -1,4 +1,4 @@
-export type ReportPeriod = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'
+export type ReportPeriod = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'CUSTOM'
 
 export type ReportKind =
   | 'summary'
